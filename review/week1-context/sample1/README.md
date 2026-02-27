@@ -5,9 +5,9 @@
 ## 运行方式
 
 1. 安装依赖：`pip install -r requirements.txt`
-2. 设置 API Key（二选一）：
-   - 环境变量：`set ARK_API_KEY=你的豆包API密钥`（Windows CMD）或 `export ARK_API_KEY=...`（Linux/macOS）
-   - 或复制 `env.example` 为 `.env` 并填写 `ARK_API_KEY`
+2. API Key：代码中已内置默认豆包 API Key，可直接运行。若需使用自己的 key，可任选其一：
+   - 环境变量：`set ARK_API_KEY=你的密钥`（Windows CMD）或 `export ARK_API_KEY=...`（Linux/macOS）
+   - 命令行参数：`python main.py --api-key 你的密钥`
 3. 执行：`python main.py`
 
 可选参数：`--provider doubao`（默认）、`--model 模型名`、`--api-key 密钥`。
@@ -17,7 +17,7 @@
 - `main.py`：入口，仅执行 sample 1 任务并打印结果
 - `agent.py`：Context-Aware Agent 与工具（货币换算、计算器、PDF、code_interpreter）
 - `config.py`：配置与 .env 加载
-- `requirements.txt`、`env.example`：依赖与环境变量示例
+- `requirements.txt`：依赖列表
 
 
 ```
