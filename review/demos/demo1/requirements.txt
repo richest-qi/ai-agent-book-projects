@@ -1,0 +1,5 @@
+# 方舟（豆包）SDK
+volcengine-python-sdk[ark]
+
+# OpenAI 兼容 SDK（可选，用于 openai 包调用方式）
+openai>=1.0.0
