@@ -144,6 +144,47 @@ Response
 ├── usage                 #  token 用量
 └── previous_response_id  # 上一轮 ID（首轮为 None）
 ```
+```
+Response(
+    created_at = 1772421084,
+    error = None,
+    id = 'resp_021772421084318b786245abeed7e2e08a64d817f8b1331b56a7f',
+    incomplete_details = None,
+    max_output_tokens = 32768,
+    model = 'doubao-seed-1-6-251015',
+    object = 'response',
+    output = [
+        ResponseReasoningItem(
+            id = 'rs_02177242108498800000000000000000000ffffac15bc7b2dbce5',
+            summary = [Summary(text = '\n用户让讲个笑话，首先得选一个轻松有趣、容易理解的，别太复杂。最好贴近生活，有共鸣的那种。比如关于日常小糗事或者动物的？动物的笑话通常比较可爱，容易让人笑。\n\n比如，想到一个关于企鹅的笑话？或者关于程序员的？或者生活中的小误会？比如下面这个：\n\n有一天，我问我家猫：“你为什么总是盯着我看？” 猫说：“因为你长得像鱼啊！” 我：“可我不是鱼啊？” 猫：“没关系，我可以等你变成鱼。” \n\n或者另一个：程序员去买早餐，老板问：“要加蛋吗？” 程序员说：“加一个。” 老板又问：“还要加别的吗？” 程序员：“加一个蛋。” 老板：“……我是问你还要加别的吗？比如火腿？” 程序员：“哦，那加一个火腿和一个蛋。” 老板：“……” \n\n或者更简单的：为什么数学书总是很忧郁？因为它有太多的问题。 \n\n嗯，选哪个好呢？第一个猫的笑话比较温馨可爱，应该不错。或者再想想有没有更搞笑的？比如：\n\n有一次我去买奶茶，店员问我：“要几分糖？” 我说：“七分糖。” 店员：“好的，那请问你要大杯还是中杯？” 我：“七分杯。” 店员：“？？？” \n\n哈哈，这个也挺有趣的。或者选那个数学书的？或者企鹅的？比如：\n\n企鹅开车去南极，半路上车坏了，他下来检查，发现是发动机出问题了。于是他去附近的修理厂，修理工说：“你先回去等吧，我看看，明天再来取。” 第二天企鹅来取车，修理工说：“好了，修好了。” 企鹅问：“什么问题？” 修理工说：“没什么，就是冻住了。” 企鹅：“……” \n\n这个也可以。不过可能用户喜欢更生活化的。再选一个吧，比如：\n\n为什么老师总是喜欢用红笔批改作业？因为这样看起来像“开门红”，希望学生进步！ \n\n或者：小明问妈妈：“妈妈，为什么我不能玩手机？” 妈妈说：“因为手机会影响你的学习。” 小明：“那爸爸为什么可以玩？” 妈妈：“因为爸爸已经不用学习了。” 小明：“哦，那我也不想学习了！” 妈妈：“……” \n\n这个挺真实的，可能会引起共鸣。或者就用那个猫的笑话吧，比较可爱。确定了，就讲那个猫的笑话：\n\n有一天，我蹲下来跟我家猫对视，它一直盯着我看，我忍不住问：“你老盯着我干嘛呀？”  \n猫慢悠悠地甩了甩尾巴，说：“因为你长得像鱼啊。”  \n我愣了一下：“可我不是鱼啊！”  \n猫眨了眨眼：“没关系，我可以等你变成鱼。”  \n\n这个应该可以，轻松有趣，没有什么复杂的梗，容易理解。', type = 'summary_text')],
+            type = 'reasoning',
+            status = 'completed'),
+        ResponseOutputMessage(
+			   type = 'message', 
+			   role = 'assistant',
+            content = [ResponseOutputText(type = 'output_text', text = '有一天，我蹲下来跟我家猫对视，它一直盯着我看，我忍不住问：“你老盯着我干嘛呀？”  \n猫慢悠悠地甩了甩尾巴，说：“因为你长得像鱼啊。”  \n我愣了一下：“可我不是鱼啊！”  \n猫眨了眨眼：“没关系，我可以等你变成鱼。”  \n\n（猫：耐心是捕猎的第一要素，人类你不懂~） 😂', annotations = None)],
+            status = 'completed',
+            id = 'msg_02177242110573800000000000000000000ffffac15bc7ba248e4',
+            partial = None)],
+    previous_response_id = None,
+    thinking = None,
+    service_tier = 'default',
+    status = 'completed',
+    temperature = None,
+    tools = None,
+    top_p = None,
+    usage = ResponseUsage(input_tokens = 41, input_tokens_details = InputTokensDetails(cached_tokens = 0), output_tokens = 801, output_tokens_details = OutputTokensDetails(reasoning_tokens = 701), total_tokens = 842, tool_usage = None, tool_usage_details = None),
+    caching = ResponseCaching(type = 'disabled', prefix = None),
+    text = None,
+    instructions = None,
+    store = True,
+    expire_at = 1772680284,
+    tool_choice = None,
+    parallel_tool_calls = None,
+    max_tool_calls = None,
+    reasoning = None
+)
+```
 
 ### 如何取出助手回复文本
 
