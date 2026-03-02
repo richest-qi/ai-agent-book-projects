@@ -59,15 +59,21 @@ python main.py
 python main_openai.py
 ```
 
-**方式三：OpenRouter SDK（OpenAI 兼容）**
+**方式三：OpenRouter（OpenAI 兼容）**
 
-一个 API Key 通过 [OpenRouter](https://openrouter.ai) 调用 100+ 模型（OpenAI、Google、Anthropic 等）。仍用 `openai` 包，`base_url` 指到 OpenRouter，并在 `.env` 中设置 `OPENROUTER_API_KEY`：
+一个 API Key 通过 [OpenRouter](https://openrouter.ai) 调用 100+ 模型。仍用 `openai` 包，`base_url` 指到 OpenRouter，并在 `.env` 中设置 `OPENROUTER_API_KEY`：
 
 ```bash
 python main_openrouter.py
 ```
 
-三种方式共用同一套依赖（`requirements.txt`）；方式一、二用 `ARK_API_KEY`，方式三用 `OPENROUTER_API_KEY`。成功时都会打印模型回复。
+**多轮对话（方舟 responses API，自动管理上下文）**
+
+```bash
+python main_multiturn.py
+```
+
+四种方式共用同一套依赖；方式一、二、四用 `ARK_API_KEY`，方式三用 `OPENROUTER_API_KEY`。成功时都会打印模型回复。
 
 ---
 
@@ -97,7 +103,56 @@ python main_openrouter.py
 
 ---
 
-## 常见问题
+## 方舟 responses.create 返回结构解析
+
+使用方舟 **Responses API**（`client.responses.create`，多轮对话）时，返回的是方舟自定义的 **Response** 对象，与 OpenAI 的 `choices[0].message.content` 不同。下面说明其真实结构及如何取出「助手回复文本」。
+
+### 顶层 Response 对象
+
+| 字段 | 含义 |
+|------|------|
+| `id` | 本轮响应 ID，多轮续聊时下一轮请求需传 `previous_response_id=response.id` |
+| `output` | **列表**，包含推理项和助手消息（见下） |
+| `status` | 状态，如 `completed` |
+| `usage` | 用量：`input_tokens`、`output_tokens`、`reasoning_tokens`（若为思考模型）等 |
+| `previous_response_id` | 上一轮响应的 ID（首轮为 `None`） |
+
+### output 列表结构
+
+`response.output` 是一个**列表**，按顺序包含两类元素：
+
+1. **推理项**（可选）  
+   - 类型：`ResponseReasoningItem`，`type='reasoning'`  
+   - 内容：模型内部思考过程（`summary[].text`），一般不直接展示给用户。
+
+2. **助手消息**  
+   - 类型：`ResponseOutputMessage`，`type='message'`，`role='assistant'`  
+   - **content**：列表，元素为 `ResponseOutputText(type='output_text', text='...')`  
+   - 这里的 **`text`** 才是需要展示的助手回复正文。
+
+### 结构关系简图
+
+```text
+Response
+├── id                    # 本轮响应 ID（多轮时传给下一轮）
+├── output: [             # 列表
+│   ├── ResponseReasoningItem   # type='reasoning'，推理过程，可不展示
+│   └── ResponseOutputMessage  # type='message'，助手消息
+│         └── content: [
+│               ResponseOutputText(text='助手回复的纯文本')
+│             ]
+├── usage                 #  token 用量
+└── previous_response_id  # 上一轮 ID（首轮为 None）
+```
+
+### 如何取出助手回复文本
+
+1. 遍历 `response.output`，找到 `type='message'` 的项。  
+2. 从该项的 `content` 列表中，取每个元素的 `text` 属性并拼接（通常只有一条），即得到助手回复的纯文本。
+
+本仓库中 `main_multiturn.py` 里的 `get_reply_text(resp)` 即按上述逻辑实现，可直接复用或参考。
+
+---
 
 ### 连接错误：WinError 10054 / ArkAPIConnectionError
 
@@ -126,6 +181,7 @@ pip install "volcengine-python-sdk[ark]"
 | `main.py` | 方舟 SDK：创建 Ark 客户端，发送一条对话并打印回复 |
 | `main_openai.py` | OpenAI SDK 调豆包：用 `openai` 包 + 豆包 base_url，效果同 main.py |
 | `main_openrouter.py` | OpenRouter：用 `openai` 包 + OpenRouter base_url，可切换 100+ 模型 |
+| `main_multiturn.py` | 多轮对话：方舟 responses.create + previous_response_id，每轮输出清晰区分 |
 | `requirements.txt` | 依赖：方舟 SDK、python-dotenv、openai |
 | `env.example` | 环境变量示例，复制为 `.env` 并填写 `ARK_API_KEY` |
 | `record.md` | 安装与排错记录（如 Windows 下 pip 引号问题） |

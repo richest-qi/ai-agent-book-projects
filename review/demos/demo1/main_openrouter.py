@@ -27,6 +27,6 @@ client = OpenAI(
 # 模型 ID 格式为 厂商/模型名，见 https://openrouter.ai/models
 completion = client.chat.completions.create(
     model="openai/gpt-4o-mini",  # 可改为 google/gemini-2.0-flash-exp:free 等
-    messages=[{"role": "user", "content": "你是谁，请详细介绍下你自己?"}],
+    messages=[{"role": "user", "content": "你是谁?"}],
 )
 print(completion.choices[0].message.content)

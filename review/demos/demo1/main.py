@@ -27,7 +27,7 @@ completion = client.chat.completions.create(
     # Replace with Model ID
     model = "doubao-seed-1-6-251015",
     messages=[
-        {"role": "user", "content": "你是谁?"},
+        {"role": "user", "content": "讲个笑话"},
     ],
     # thinking={"type": "disabled"}, #  Manually disable deep thinking
 )
