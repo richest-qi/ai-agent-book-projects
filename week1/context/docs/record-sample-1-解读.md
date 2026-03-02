@@ -13,6 +13,55 @@
 
 ---
 
+## 零、Sample 1 三轮上下文变化（线框示意）
+
+```
+ITERATION 1 请求的 messages           ITERATION 1 响应
+┌────────────────────────┐           ┌────────────────────────┐
+│ [0] system  系统提示词   │           │ assistant + tool_calls  │
+│ [1] user    用户任务     │  ──请求──►│ (3× convert_currency)  │
+└────────────────────────┘    ◄──响应─└────────────────────────┘
+         │                                    │
+         │                                    │ agent 执行 3 次工具，
+         │                                    │ 得到 3 个 result
+         │                                    ▼
+         │                           ┌────────────────────────┐
+         │                           │ 结果回填到 messages：    │
+         │                           │ [2] assistant           │
+         │                           │ [3] tool (EUR)          │
+         │                           │ [4] tool (GBP)          │
+         │                           │ [5] tool (JPY)          │
+         │                           └────────────────────────┘
+         │                                    │
+         ▼                                    ▼
+ITERATION 2 请求的 messages           ITERATION 2 响应
+┌────────────────────────┐           ┌────────────────────────┐
+│ [0] system             │           │ assistant + tool_calls  │
+│ [1] user               │  ──请求──►│ (1× calculate)          │
+│ [2] assistant (上轮)   │    ◄──响应─└────────────────────────┘
+│ [3] tool (EUR 结果)     │                    │
+│ [4] tool (GBP 结果)     │                    │ 执行 1 次工具，回填
+│ [5] tool (JPY 结果)     │                    ▼
+└────────────────────────┘           messages 变为 8 条
+         │                                    │
+         ▼                                    ▼
+ITERATION 3 请求的 messages           ITERATION 3 响应
+┌────────────────────────┐           ┌────────────────────────┐
+│ [0] system             │           │ assistant               │
+│ [1] user               │  ──请求──►│ content: "FINAL ANSWER: │
+│ [2] assistant          │    ◄──响应─│  ... 50403.33"          │
+│ [3] tool                │           │ tool_calls: null        │
+│ [4] tool                │           └────────────────────────┘
+│ [5] tool                │                    │
+│ [6] assistant           │                    │ 不再调用工具，结束
+│ [7] tool (calculate结果) │                    ▼
+└────────────────────────┘           返回 final_answer
+```
+
+上表从左到右：**每轮请求的 messages 都在上一轮基础上变长**（上下文累加）；**工具执行结果**以 `role: "tool"` 进入下一轮请求；**第三轮**模型不再返回 tool_calls，只返回 FINAL ANSWER，循环结束。
+
+---
+
 ## 一、LLM Agent 工作原理概览
 
 本项目中，Agent 完成一个任务（如 Sample 1 的货币换算）的流程可以概括为：
