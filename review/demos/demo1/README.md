@@ -73,11 +73,36 @@ python main_openrouter.py
 python main_multiturn.py
 ```
 
-四种方式共用同一套依赖；方式一、二、四用 `ARK_API_KEY`，方式三用 `OPENROUTER_API_KEY`。成功时都会打印模型回复。
+**内置联网搜索（Web Search）查实时信息（如天气）**
+
+使用豆包内置 [联网搜索 Web Search](https://www.volcengine.com/docs/82379/1756990) 工具，通过 Responses API 获取实时公开网络信息（新闻、商品、天气等）：
+
+```bash
+python main_weather_websearch.py
+```
+
+> **若报错 `ToolNotOpen` / 404**：表示当前账号未开通「联网搜索」能力。需在火山引擎控制台开通 [内容插件](https://console.volcengine.com/common-buy/CC_content_plugin) 后再用；或改用 **Function Calling + 自定义天气 API** 实现查天气（不依赖 Web Search）。
+
+五种方式共用同一套依赖；方式一、二、四、五用 `ARK_API_KEY`，方式三用 `OPENROUTER_API_KEY`。成功时都会打印模型回复。
 
 ---
 
-## 三种调用方式对比与选择
+## 豆包：Responses API 与 Chat API 的区别
+
+本 demo 里 **main.py** 用的是 **Chat API**（`client.chat.completions.create`），**main_multiturn.py** 用的是 **Responses API**（`client.responses.create`）。二者都是方舟/豆包提供的接口，但用法和适用场景不同。
+
+| 维度 | Chat API | Responses API |
+|------|----------|----------------|
+| **调用方式** | `client.chat.completions.create(model=..., messages=[...])` | `client.responses.create(model=..., input=..., previous_response_id=...)` |
+| **上下文由谁维护** | **客户端**：每次请求都要传完整的 `messages`（历史对话 + 本轮输入） | **服务端**：用 `previous_response_id` 关联上一轮，只传本轮 `input`，不必每次带完整历史 |
+| **多轮对话** | 自己把每轮的 assistant 回复和 tool 结果 append 到 `messages`，下次请求整段发出去 | 服务端根据 `previous_response_id` 自动关联上下文，多轮只需不断传新 input + 上一轮 response.id |
+| **工具调用** | 需自己实现循环：收到 `tool_calls` → 本地执行工具 → 把结果以 `role: "tool"` 追加进 messages → 再次调用 Chat API | 支持服务端/内置工具与自动化流程，多轮与工具调用由 API 设计原生支持 |
+| **返回结构** | OpenAI 风格：`response.choices[0].message`（含 `content`、`tool_calls` 等） | 方舟自有结构：`response.output`（列表，含 reasoning、message 等），`response.id` 用作下一轮 `previous_response_id` |
+| **典型场景** | 需要精细控制每条消息、或与 OpenAI 接口对齐（如 agent 自管上下文、自执行工具） | 多轮对话、智能体式交互，希望少写上下文与工具循环代码时 |
+
+**简要结论**：**Chat API** = 客户端管上下文、自己组 messages、自己处理 tool_calls 的「传统」用法；**Responses API** = 服务端管上下文、用 `previous_response_id` 串起多轮、适合多轮对话与内置工具的「新」用法。本仓库中 [week1/context](../../week1/context) 的 agent 用的是 Chat API 自管上下文 + 自执行工具；demo1 的 main_multiturn.py 演示的是 Responses API 的多轮用法。
+
+---
 
 ### 区别概览
 
@@ -223,6 +248,7 @@ pip install "volcengine-python-sdk[ark]"
 | `main_openai.py` | OpenAI SDK 调豆包：用 `openai` 包 + 豆包 base_url，效果同 main.py |
 | `main_openrouter.py` | OpenRouter：用 `openai` 包 + OpenRouter base_url，可切换 100+ 模型 |
 | `main_multiturn.py` | 多轮对话：方舟 responses.create + previous_response_id，每轮输出清晰区分 |
+| `main_weather_websearch.py` | 内置 Web Search：Responses API + tools=[web_search]，查询北京今日天气等实时信息 |
 | `requirements.txt` | 依赖：方舟 SDK、python-dotenv、openai |
 | `env.example` | 环境变量示例，复制为 `.env` 并填写 `ARK_API_KEY` |
 | `record.md` | 安装与排错记录（如 Windows 下 pip 引号问题） |
