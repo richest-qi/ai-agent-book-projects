@@ -6,3 +6,6 @@ python-dotenv>=1.0.0
 
 # OpenAI 兼容 SDK（可选，用于 openai 包调用方式）
 openai>=1.0.0
+
+# 天气 Function Calling 示例中请求 Open-Meteo API
+requests>=2.28.0
