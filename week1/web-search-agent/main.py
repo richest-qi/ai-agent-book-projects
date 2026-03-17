@@ -1,6 +1,9 @@
 """
 主程序 - Web Search Agent 使用示例
 """
+# 必须在 import Config 之前加载 .env，否则 Config 类在定义时会读取 os.getenv，此时 .env 还未加载
+from dotenv import load_dotenv
+load_dotenv()
 
 import sys
 import logging
