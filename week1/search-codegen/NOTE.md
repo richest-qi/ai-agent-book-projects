@@ -151,3 +151,83 @@ OpenRouter → Azure → GPT 模型（兼容模式）
 
 - **GPT-5 的内置工具，只存在于「OpenAI 官方运行环境」中。**
 - **一旦通过 OpenRouter / Azure 转发，这些工具能力就不会被带过去。**
+
+---
+
+## 十、为什么指定了 openai/gpt-5 还会被路由到 Azure？
+
+代码里写的是 `model = "openai/gpt-5-2025-08-07"`，按理说是「要 OpenAI 的 GPT-5」，为什么 OpenRouter 会把请求发到 Azure？常见疑惑有三点，对应关系如下。
+
+### 1. 为什么指定了 GPT-5，OpenRouter 还会路由到 Azure？
+
+**OpenRouter 对同一个 model id 可以有多个 provider。**
+
+- 你只指定了**模型名**（`openai/gpt-5-2025-08-07`），没有指定「必须用哪家厂商」。
+- OpenRouter 会按自己的策略（可用性、成本、延迟、配额等）在「能提供这个模型的供应商」里选一个，把请求发过去。
+- **Azure 完全可以是「提供 openai/gpt-5-2025-08-07 的其中一个供应商」**，所以路由到 Azure 并不矛盾。
+
+也就是说：**「指定了 GPT-5」只决定了用哪个模型，没有决定「必须走 OpenAI 官网」**；路由到 Azure 是 OpenRouter 的调度结果。
+
+### 2. Azure 支不支持这种模型？
+
+**可以支持。**
+
+- **Azure OpenAI** 会部署 OpenAI 的模型（包括 GPT-4 / GPT-5 等），所以从「模型能力」上，Azure 可以跑的就是你指定的那类 GPT-5 模型。
+- 差别在于 **API 形态**：
+  - **OpenAI 官方**：有 Responses API、原生 web_search / code_interpreter 等。
+  - **Azure**：主要是 **Chat Completions + 标准 function calling**，不提供那套原生工具。
+
+所以：**Azure 支持「这个模型」，但不支持「带原生工具执行环境的那套 API」**。你指定的是模型 id，OpenRouter 选到了「用 Azure 来提供这个模型」的一条路。
+
+### 3. OpenRouter 为什么不把请求路由到 OpenAI？
+
+可能原因包括（具体以 OpenRouter 的策略为准）：
+
+- **负载 / 可用性**：当时 OpenAI 直连不可用或排队，Azure 有空闲。
+- **成本 / 合约**：你的账号或套餐更便宜 / 更优先走 Azure。
+- **多 provider 配置**：同一 model id 在 OpenRouter 后台被配置成「可由 OpenAI 或 Azure 提供」，调度时选到了 Azure。
+
+所以：**不是「OpenRouter 搞错了」，而是「OpenRouter 认为当前请求可以由 Azure 来满足这个 model id」**。满足的是「用 GPT-5 模型」，没满足的是「用 OpenAI 官方的工具执行环境」。
+
+### 小结
+
+| 问题 | 结论 |
+|------|------|
+| 指定了 gpt-5，为什么还会到 Azure？ | 因为 OpenRouter 对同一 model 会多 provider 路由，你只选了模型，没选厂商；这次被调度到了 Azure。 |
+| Azure 支持这个模型吗？ | 支持。Azure OpenAI 可以跑这类模型，但只暴露 Chat Completions + function calling，不暴露原生 web_search / code_interpreter。 |
+| 为什么 OpenRouter 不路由到 OpenAI？ | 路由策略（可用性 / 成本 / 配置）让这次请求落在了 Azure；要「一定走 OpenAI 且带原生工具」，需要在 OpenRouter 里指定只走 OpenAI，或直接用 OpenAI 官方 API。 |
+
+---
+
+## 十一、如果 OpenRouter 路由到 OpenAI 的 GPT-5，是不是就不会遇到以上问题了？
+
+**不一定「完全没问题」，但「这类 400（type 不是 function）就不会再出现」。**
+
+### 1. 当前这个 400，换成「OpenRouter → OpenAI」后会怎样？
+
+- 当前 400 的直接原因是：**Azure 端只认 `type: "function"` 的 tools**，你发了 `type: "web_search"` / `"code_interpreter"`，所以报错。
+- 如果同一份请求变成：**你 → OpenRouter → OpenAI（官方 GPT-5 + Responses API）**：
+  - OpenAI 官方**认识** `web_search`、`code_interpreter` 这些原生工具 type；
+  - 就不会再给你「expected "function"」这类 400。
+
+所以：**这个具体错误在「路由到 OpenAI 官方环境」时基本不会出现。**
+
+### 2. 但会不会就「一切 OK、稳稳能用工具」？
+
+还要满足几个前提：
+
+- OpenRouter 确实把这个 model id 路由到了 **OpenAI 官方**，而不是别的 provider；
+- 用的是 **OpenAI 的 Responses / tools 形态**，而不是再套一层「只支持 function calling」的兼容层；
+- 你的账号在 OpenAI 那边有权限、配额使用 GPT-5 及其内置 tools。
+
+一旦这些都满足：
+
+- GPT-5 会按 `type: "web_search"` / `"code_interpreter"` 理解并调起工具；
+- 不需要你写 `function: { name, parameters }`；
+- 不会再被「只认 type: function」的后端拦下。
+
+### 一句话总结
+
+> **问题不是「GPT-5 会不会用工具」，而是「你到底打到了哪一家的 GPT-5 服务」。**
+> - 打到 **Azure 这一层** → 工具能力被「降级成 function calling」，于是出现当前这个 400。
+> - 真正打到 **OpenAI 官方 GPT-5 + tools 环境** → `web_search` / `code_interpreter` 这类原生 tools 就能正常走，不会报你现在看到的这个错。
