@@ -2,6 +2,8 @@
 Main entry point for GPT-5 Native Tools Agent
 Interactive CLI for using web_search and code_interpreter tools
 """
+from dotenv import load_dotenv
+load_dotenv()
 
 import sys
 import json
