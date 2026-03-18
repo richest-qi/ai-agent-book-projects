@@ -231,3 +231,46 @@ OpenRouter → Azure → GPT 模型（兼容模式）
 > **问题不是「GPT-5 会不会用工具」，而是「你到底打到了哪一家的 GPT-5 服务」。**
 > - 打到 **Azure 这一层** → 工具能力被「降级成 function calling」，于是出现当前这个 400。
 > - 真正打到 **OpenAI 官方 GPT-5 + tools 环境** → `web_search` / `code_interpreter` 这类原生 tools 就能正常走，不会报你现在看到的这个错。
+
+---
+
+## 十二、指定了 model 为什么还能被路由到 Azure？—— model 与 provider 是两回事
+
+[OpenRouter Provider Routing](https://openrouter.ai/docs/guides/routing/provider-selection) 里写得很清楚：
+
+- **model**（如 `openai/gpt-5-2025-08-07`）只表示「用哪个模型」；
+- **provider**（如 `openai`、`azure`）表示「由哪家厂商来提供」；
+- 二者独立：**指定 model 并不会指定 provider**。
+
+OpenRouter 默认会对「能提供该 model 的多个 provider」做**负载均衡**（按价格、可用性等），所以同一 model 可能这次走 OpenAI、下次走 Azure。因此即便你在代码里写了 `model = "openai/gpt-5-2025-08-07"`，也只是指定了模型 id，**没有指定必须用 OpenAI 这家 provider**，请求被分到 Azure 是符合当前设计的。
+
+若要用原生 tools（web_search / code_interpreter），需要请求实际落到 **OpenAI 官方环境**，则必须在请求里**显式指定 provider**，例如：
+
+- `provider: { "order": ["openai"] }` — 优先使用 openai，仍可 fallback；
+- 或 `provider: { "only": ["openai"] }` — 只允许 openai。
+
+本仓库曾尝试在 `agent.py` 中增加 `provider: { "only": ["openai"] }` 或 `order: ["openai"]`，以强制只走 OpenAI。实测发现：**即使请求已落到 OpenAI（响应里 `provider_name: "OpenAI"`），仍返回同样的 400**（expected "function"）。说明 **OpenRouter 转发到 OpenAI 时使用的是只支持 `type: "function"` 的 Chat Completions 接口，而非支持 web_search/code_interpreter 的 Responses API**，故经 OpenRouter 无法使用 GPT-5 原生工具格式。当前实现已改为使用 OpenRouter 的 **plugins**（`plugins: [{ "id": "web" }]`）启用联网，所有 provider 均支持，可正常回答需联网的问题；code_interpreter 在 OpenRouter 上无等价能力，需自行用标准 function calling 实现。
+
+---
+
+## 十三、指定只走 OpenAI 后仍 400：结论与当前方案
+
+### 现象
+
+使用 `provider: { "only": ["openai"] }` 后，响应中 `metadata.provider_name` 已为 `"OpenAI"`，但依然返回 400，错误信息仍为：`expected "function"`、`0.function: expected object, received undefined` 等。
+
+### 结论
+
+- **不是** provider 选错（已确认为 OpenAI）。
+- **而是**：OpenRouter 在转发到 OpenAI 时，走的是**只支持 `type: "function"` 的 Chat Completions 接口**，而不是支持 `web_search` / `code_interpreter` 的 **Responses API**。因此无论指定 Azure 还是 OpenAI，经 OpenRouter 的请求都无法使用 GPT-5 原生工具格式。
+
+### 代码上的改动（当前实现）
+
+| 原来 | 现在 |
+|------|------|
+| 请求里带 `tools: [ { type: "web_search", ... }, { type: "code_interpreter", ... } ]` | **不再**传上述 tools（会触发 400） |
+| 依赖「原生工具」做联网 | 使用 OpenRouter 的 **plugins** 做联网：`plugins: [ { "id": "web", "max_results": 5 } ]` |
+
+- 文档：[Web Search \| OpenRouter](https://openrouter.ai/docs/guides/features/plugins/web-search)
+- 效果：在 OpenRouter 上可正常做联网搜索，所有 provider 均支持，不再出现 400。
+- **code_interpreter**：OpenRouter 无等价能力；若需要，可自行用标准 function calling 实现一个「执行代码」的工具。

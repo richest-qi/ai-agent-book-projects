@@ -118,23 +118,10 @@ Remember: These are native tools built into your capabilities, use them naturall
         }
         
         if use_tools:
-            # Match the exact Go implementation structure
-            request["tools"] = [
-                {
-                    "type": "web_search",
-                    "search_context_size": "medium",
-                    "user_location": {
-                        "type": "approximate",
-                        "country": "US"
-                    }
-                },
-                {
-                    "type": "code_interpreter",
-                    "container": {"type": "auto"}
-                },
-            ]
-            request["tool_choice"] = "auto"
-            request["parallel_tool_calls"] = True
+            # OpenRouter 转发到 OpenAI 时仍走 Chat Completions 接口，不接受 type: "web_search"/"code_interpreter"，
+            # 会报 400（即使 provider 已是 OpenAI）。改用 OpenRouter 的 plugins 启用联网，所有 provider 均支持。
+            # 见 https://openrouter.ai/docs/guides/features/plugins/web-search
+            request["plugins"] = [{"id": "web", "max_results": 5}]
         
         # Add reasoning configuration
         request["reasoning"] = {
