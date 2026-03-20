@@ -2,9 +2,18 @@
 
 本机 **Ollama** + **`get_current_time` 工具**：模型根据用户说的城市选择 IANA 时区并调用工具，程序只负责执行工具并多轮对话直到模型给出文本回复。
 
+**正确性来自哪里（很关键）：**  
+- 真实的“当前时间”由程序在本机执行的 `get_current_time(timezone)` 计算得到；  
+- 但 `timezone` 具体传入哪个 IANA（以及最终自然语言里怎么复述）由模型决定，因此**模型可能选错时区或在复述时出错**。
+
 - 无客户端城市映射表、无二次追问修复 JSON、无 verbose 轨迹打印（刻意保持简单）。
 
 ## 运行
+
+## 运行前准备
+
+1. 启动 Ollama 服务：`ollama serve`
+2. 拉取/确认模型：例如 `ollama pull qwen3:0.6b`、`ollama pull qwen3:8b`
 
 ```bash
 cd review/week2-llm/sample1
@@ -75,13 +84,15 @@ python main.py --model qwen3:8b
 
 在「本目录仅 model + `get_current_time(timezone)`（无客户端城市→IANA 映射）」的前提下，复现到以下现象：
 
+> 说明：以上结论为你刚刚在本机多次运行（2026-03-20）对比 `qwen3:0.6b` 与 `qwen3:8b` 的验证结果。
+
 ### 输入 `Tokyo` / `Toyko` / `Tyoko`
 
 | 模型 | 输入 | 输出（节选） | 结论 |
 |------|------|--------------|------|
-| `qwen3:0.6b` | `Tokyo` | `Asia/Shanghai`、`+0800` | 错（日本东京应为 `Asia/Tokyo`、`+0900`） |
+| `qwen3:0.6b` | `东京` | `Asia/Shanghai`、`+0800` | 错（日本东京应为 `Asia/Tokyo`、`+0900`） |
 | `qwen3:0.6b` | `Toyko` | `Asia/Shanghai` | 错 |
-| `qwen3:8b` | `Tyoko` | `Asia/Tokyo`、`+0900` | 对 |
+| `qwen3:8b` | `东京` | `Asia/Tokyo`、`+0900` | 对（但响应更慢） |
 | `qwen3:8b` | `Toyko` | `Asia/Tokyo`、`+0900` | 对（但响应更慢） |
 
 ### 观察
@@ -89,3 +100,5 @@ python main.py --model qwen3:8b
 - `qwen3:8b` 相对更可能在「拼写变体（Toyko/Tyoko）」时把 IANA 选对（`Asia/Tokyo`）。
 - `qwen3:0.6b` 在 `Tokyo` 与 `Toyko` 上都稳定落到 `Asia/Shanghai`，基本无法正确映射到日本时区。
 - 模型越大（`8b`）响应越慢，这是可接受的权衡。
+
+**性能权衡一句话：**更大模型（如 `qwen3:8b`）通常更准，但推理更慢；小模型（如 `qwen3:0.6b`）更快但更容易把“城市→IANA 时区”选错。
