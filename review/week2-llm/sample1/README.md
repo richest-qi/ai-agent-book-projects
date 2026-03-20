@@ -68,3 +68,24 @@ python main.py --model qwen3:8b
 - 若要稳定：**换更大、tool calling 更可靠的模型**，或在产品里增加 **映射 / 地理 API / 参数校验**（与本目录「极简 demo」目标不同）。
 
 **一句话**：**对的时钟 ≠ 对的地理**；中间隔着模型选 IANA 与组织语言两层，小模型这两层都不可靠时，就会出现「东京却用上海时区」这类输出。
+
+---
+
+## 实验补充：东京类输入在不同模型下的表现
+
+在「本目录仅 model + `get_current_time(timezone)`（无客户端城市→IANA 映射）」的前提下，复现到以下现象：
+
+### 输入 `Tokyo` / `Toyko` / `Tyoko`
+
+| 模型 | 输入 | 输出（节选） | 结论 |
+|------|------|--------------|------|
+| `qwen3:0.6b` | `Tokyo` | `Asia/Shanghai`、`+0800` | 错（日本东京应为 `Asia/Tokyo`、`+0900`） |
+| `qwen3:0.6b` | `Toyko` | `Asia/Shanghai` | 错 |
+| `qwen3:8b` | `Tyoko` | `Asia/Tokyo`、`+0900` | 对 |
+| `qwen3:8b` | `Toyko` | `Asia/Tokyo`、`+0900` | 对（但响应更慢） |
+
+### 观察
+
+- `qwen3:8b` 相对更可能在「拼写变体（Toyko/Tyoko）」时把 IANA 选对（`Asia/Tokyo`）。
+- `qwen3:0.6b` 在 `Tokyo` 与 `Toyko` 上都稳定落到 `Asia/Shanghai`，基本无法正确映射到日本时区。
+- 模型越大（`8b`）响应越慢，这是可接受的权衡。
