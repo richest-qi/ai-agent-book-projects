@@ -1,0 +1,2 @@
+# 本地 Ollama HTTP API 客户端（与 week2/local_llm_serving 一致）
+ollama>=0.1.0
