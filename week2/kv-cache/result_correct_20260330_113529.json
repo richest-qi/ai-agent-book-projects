@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "final_answer": null,
+  "iterations": 1,
+  "tool_calls": [],
+  "metrics": "AgentMetrics(ttft=0.0, ttft_per_iteration=[], total_time=9.727184772491455, iterations=1, tool_calls=0, cache_hits=0, cache_misses=0, prompt_tokens=0, completion_tokens=0, cached_tokens=0)",
+  "mode": "correct"
+}

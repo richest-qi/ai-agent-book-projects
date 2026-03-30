@@ -78,6 +78,7 @@ which ollama
 | `ollama pull <模型名>` | 拉取模型，例如 `ollama pull qwen3:0.6b` |
 | `ollama run <模型名>` | 在命令行中与模型对话 |
 | `ollama stop <模型名>` | 从内存中卸载模型 |
+| `ollama rm <模型名>` | 从本机**删除**已下载的模型（释放磁盘），例如 `ollama rm qwen3:8b`；与 `stop` 不同，`stop` 只卸内存不删文件 |
 
 本项目默认使用的模型为 **qwen3:0.6b**，若未安装可执行：
 

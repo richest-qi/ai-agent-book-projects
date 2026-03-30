@@ -8,9 +8,15 @@ import sys
 import json
 import argparse
 import logging
+from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
+from dotenv import load_dotenv
+
 from agent import KVCacheAgent, KVCacheMode, compare_implementations
+
+# Load MOONSHOT_API_KEY (etc.) from week2/kv-cache/.env when present
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # Configure logging
 logging.basicConfig(
@@ -302,7 +308,11 @@ def run_comparison(api_key: str, task: str = None, root_dir: str = "../.."):
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="KV Cache Demonstration with ReAct Agent")
-    parser.add_argument("--api-key", type=str, help="API key for Kimi (or use MOONSHOT_API_KEY env var)")
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        help="API key for Kimi (or set MOONSHOT_API_KEY in environment / .env next to main.py)",
+    )
     parser.add_argument("--mode", type=str, help="Single mode to run (correct, dynamic_system, etc.)")
     parser.add_argument("--compare", action="store_true", help="Run comparison across all modes")
     parser.add_argument("--task", type=str, help="Custom task to execute")
@@ -317,7 +327,10 @@ def main():
     # Get API key
     api_key = args.api_key or os.getenv("MOONSHOT_API_KEY")
     if not api_key:
-        logger.error("Please provide API key via --api-key or MOONSHOT_API_KEY environment variable")
+        logger.error(
+            "Please provide API key via --api-key, MOONSHOT_API_KEY, or "
+            "MOONSHOT_API_KEY=... in .env (same directory as main.py)"
+        )
         sys.exit(1)
     
     # Run based on mode
