@@ -12,6 +12,10 @@ import random
 import os
 import json
 from datetime import datetime
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from tau_bench.types import RunConfig
 # from litellm import provider_list  # This returns enums, not strings
 # Define provider choices as strings
@@ -25,6 +29,10 @@ from ablation_utils import (
     remove_tool_descriptions,
     ToneStyle
 )
+
+# Load local environment variables (API keys, etc.) from `.env`
+# This is expected to live next to this script: `week2/prompt-engineering/.env`.
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 def parse_args():

@@ -1,0 +1,501 @@
+[
+  {
+    "task_id": 0,
+    "reward": 1.0,
+    "info": {
+      "task": {
+        "user_id": "mia_li_3668",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_li_3668",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT136",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT039",
+                  "date": "2024-05-20"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Li",
+                  "dob": "1990-04-05"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "certificate_7504069",
+                  "amount": 250
+                },
+                {
+                  "payment_id": "credit_card_4421486",
+                  "amount": 5
+                }
+              ],
+              "total_baggages": 3,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_li_3668. You want to fly from New York to Seattle on May 20 (one way). You do not want to fly before 11am est. You want to fly in economy. You prefer direct flights but one stopover also fine. If there are multiple options, you prefer the one with the lowest price. You have 3 baggages. You do not want insurance. You want to use your two certificates to pay. If only one certificate can be used, you prefer using the larger one, and pay the rest with your 7447 card. You are reactive to the agent and will not say anything that is not asked. Your birthday is in your user profile so you do not prefer to provide it.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.00408125,
+      "reward_info": {
+        "reward": 1.0,
+        "info": {
+          "r_actions": 1.0,
+          "gt_data_hash": "a825bc534ee4abad2f0f36d5d162989dcbae16dd509bd675feb7e9ffc86a1001"
+        },
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_li_3668",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT136",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT039",
+                  "date": "2024-05-20"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Li",
+                  "dob": "1990-04-05"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "certificate_7504069",
+                  "amount": 250
+                },
+                {
+                  "payment_id": "credit_card_4421486",
+                  "amount": 5
+                }
+              ],
+              "total_baggages": 3,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ]
+      }
+    },
+    "traj": [
+      {
+        "role": "system",
+        "content": "# Airline Agent Policy\n\nThe current time is 2024-05-15 15:00:00 EST.\n\nAs an airline agent, you can help users book, modify, or cancel flight reservations.\n\n- Before taking any actions that update the booking database (booking, modifying flights, editing baggage, upgrading cabin class, or updating passenger information), you must list the action details and obtain explicit user confirmation (yes) to proceed.\n\n- You should not provide any information, knowledge, or procedures not provided by the user or available tools, or give subjective recommendations or comments.\n\n- You should only make one tool call at a time, and if you make a tool call, you should not respond to the user simultaneously. If you respond to the user, you should not make a tool call at the same time.\n\n- You should deny user requests that are against this policy.\n\n- You should transfer the user to a human agent if and only if the request cannot be handled within the scope of your actions.\n\n## Domain Basic\n\n- Each user has a profile containing user id, email, addresses, date of birth, payment methods, reservation numbers, and membership tier.\n\n- Each reservation has an reservation id, user id, trip type (one way, round trip), flights, passengers, payment methods, created time, baggages, and travel insurance information.\n\n- Each flight has a flight number, an origin, destination, scheduled departure and arrival time (local time), and for each date:\n  - If the status is \"available\", the flight has not taken off, available seats and prices are listed.\n  - If the status is \"delayed\" or \"on time\", the flight has not taken off, cannot be booked.\n  - If the status is \"flying\", the flight has taken off but not landed, cannot be booked.\n\n## Book flight\n\n- The agent must first obtain the user id, then ask for the trip type, origin, destination.\n\n- Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger. All passengers must fly the same flights in the same cabin.\n\n- Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable. All payment methods must already be in user profile for safety reasons.\n\n- Checked bag allowance: If the booking user is a regular member, 0 free checked bag for each basic economy passenger, 1 free checked bag for each economy passenger, and 2 free checked bags for each business passenger. If the booking user is a silver member, 1 free checked bag for each basic economy passenger, 2 free checked bag for each economy passenger, and 3 free checked bags for each business passenger. If the booking user is a gold member, 2 free checked bag for each basic economy passenger, 3 free checked bag for each economy passenger, and 3 free checked bags for each business passenger. Each extra baggage is 50 dollars.\n\n- Travel insurance: the agent should ask if the user wants to buy the travel insurance, which is 30 dollars per passenger and enables full refund if the user needs to cancel the flight given health or weather reasons.\n\n## Modify flight\n\n- The agent must first obtain the user id and the reservation id.\n\n- Change flights: Basic economy flights cannot be modified. Other reservations can be modified without changing the origin, destination, and trip type. Some flight segments can be kept, but their prices will not be updated based on the current price. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!\n\n- Change cabin: all reservations, including basic economy, can change cabin without changing the flights. Cabin changes require the user to pay for the difference between their current cabin and the new cabin class. Cabin class must be the same across all the flights in the same reservation; changing cabin for just one flight segment is not possible.\n\n- Change baggage and insurance: The user can add but not remove checked bags. The user cannot add insurance after initial booking.\n\n- Change passengers: The user can modify passengers but cannot modify the number of passengers. This is something that even a human agent cannot assist with.\n\n- Payment: If the flights are changed, the user needs to provide one gift card or credit card for payment or refund method. The agent should ask for the payment or refund method instead.\n\n## Cancel flight\n\n- The agent must first obtain the user id, the reservation id, and the reason for cancellation (change of plan, airline cancelled flight, or other reasons)\n\n- All reservations can be cancelled within 24 hours of booking, or if the airline cancelled the flight. Otherwise, basic economy or economy flights can be cancelled only if travel insurance is bought and the condition is met, and business flights can always be cancelled. The rules are strict regardless of the membership status. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!\n\n- The agent can only cancel the whole trip that is not flown. If any of the segments are already used, the agent cannot help and transfer is needed.\n\n- The refund will go to original payment methods in 5 to 7 business days.\n\n## Refund\n\n- If the user is silver/gold member or has travel insurance or flies business, and complains about cancelled flights in a reservation, the agent can offer a certificate as a gesture after confirming the facts, with the amount being $100 times the number of passengers.\n\n- If the user is silver/gold member or has travel insurance or flies business, and complains about delayed flights in a reservation and wants to change or cancel the reservation, the agent can offer a certificate as a gesture after confirming the facts and changing or cancelling the reservation, with the amount being $50 times the number of passengers.\n\n- Do not proactively offer these unless the user complains about the situation and explicitly asks for some compensation. Do not compensate if the user is regular member and has no travel insurance and flies (basic) economy.\n"
+      },
+      {
+        "role": "user",
+        "content": "I\u2019m looking for a one-way flight from New York to Seattle on May 20, leaving after 11am Eastern, in economy."
+      },
+      {
+        "content": "I can help with that. Before I search, I need a few details:\n\n- What\u2019s your user ID?\n- Which New York airport would you like to depart from: JFK, LGA, or EWR?\n- Is a nonstop flight required, or are one-stop options okay if they fit the timing?\n- How many passengers, and will all be in economy?\n- Any flexibility if nothing is available after 11:00 AM ET on May 20?",
+        "role": "assistant",
+        "tool_calls": null,
+        "function_call": null,
+        "reasoning_content": "**Planning flight booking**\n\nI need to start the process of booking a flight. First, I'll obtain the user's ID and clarify the trip details. They mentioned a one-way trip from New York, but I need the specific airport code. I should ask which NYC airport they prefer \u2014 JFK, LGA, or EWR. Then, I\u2019ll search for direct flights for the date of May 20, 2024, around 11 AM Eastern. I\u2019ll also confirm if they're looking for economy cabin only and if they're open to one-stop flights. Then, I can proceed with the search.",
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": "**Planning flight booking**\n\nI need to start the process of booking a flight. First, I'll obtain the user's ID and clarify the trip details. They mentioned a one-way trip from New York, but I need the specific airport code. I should ask which NYC airport they prefer \u2014 JFK, LGA, or EWR. Then, I\u2019ll search for direct flights for the date of May 20, 2024, around 11 AM Eastern. I\u2019ll also confirm if they're looking for economy cabin only and if they're open to one-stop flights. Then, I can proceed with the search.",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Planning flight booking**\n\nI need to start the process of booking a flight. First, I'll obtain the user's ID and clarify the trip details. They mentioned a one-way trip from New York, but I need the specific airport code. I should ask which NYC airport they prefer \u2014 JFK, LGA, or EWR. Then, I\u2019ll search for direct flights for the date of May 20, 2024, around 11 AM Eastern. I\u2019ll also confirm if they're looking for economy cabin only and if they're open to one-stop flights. Then, I can proceed with the search.",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpziZvoyhTrrVLyX5JZf8JvDCZgXVrDJR8GVTjz_81lv5B7L8QH1CT2Mr1jlcVgeCLI7_0Aas2ixqKzeYqGcOw0M5ppeuUpETEGUXUJwxN3X-R7gQyEwd5KPwhHa6ERyRUFdLSNCgoRSNOIcneG5guZWoCgZwl1bujIUqekBC5twf8jlhiQZUmANRCgPICJ_L6DCj9sgMmSaKo2mBLsPJdNB-ybhOvxI4M5s0c9lwCu_U169L_TWTc1KifT8zS4brOM8faOukCIeV8rS4_8hzZftBpzQK4K2C9aDzv_jimh9s0xordX0QUmioH2phls9ILLuiz0hw7ETd9BKTQH3Fj7cCYUVqIGouV1Wi3jwOFX9aQjqmb_K5bev7l5Zf2yxsJb_zODIXVOCbk_9uRmkaMzb09TfNFosMvF9eov_zhhMDfbgXKnEkZA2EESoRx488br-5XWbbERA6v4mi9RblUBFAeo9X2_6Oo9w3TUqa_nvQRKnR_Zh_YBqkb7ETc_h84PPP1AjlrVE4A3SQFyybvotNltw2Ql_YcbU7fP1JApRhdfimTqa3z6mDCEJXnOWOzX8wJm5NbNv5FwMKpNzNipvWLgG5pzSGvXZQAaxoEFg_71n0lYOtIg1pPo-1IvLm4T5DNyRBb9k3BA58zLowC7ZbYtVbQojVt5hFyuLWiYf3jXZEFQpcx79h_4Incj9woJ2ulJ66546NrilXwxBCYPEj1ekyCUGz6SJj4DZ6Pmq3lg7A8koS_IrSGhrXTFWa_tCeXUCZSDaBylDHqRbC0x8nhgRHALXrCOHaIrkwit-5uNkeGqz0pYmZYBRSBfmFRrM3zFiAf5BM9prRW1NFaxK4qxJIsgAkeu6Yov6mWJEb-LkaFjqG1JmwYG_oy_glwosVSB9pTgIC-0w7B0F0rFt5MKnGnEMxwkFMMAc57Ws3yUu3QUE86LVwkjK2vhHcZC_9k0xRPxlf0GZNblT1p_iVjldqpfH0aP3O2sNVZLGNgMmD_Pr_pH1hISICVLiMmbhw3Re8iYWVD4j-yW_LkQLc-U4JNKA1a8ZrveP1DQn5OH0bfJ9-a4OvVxBfVmPAQn9H1-ji5B7CPczqWRAAbxk5Ak0fWCSje1gqPukn5RIZmnTHtjEDFum7NBGjBqP3smX9P_Y7MSXHknhx3hL_4qgTUCb3bKZWydW7OQRhE_gpbzrcLJG0J3bSRfCL8axNRqiDsVYiMzQoFVdsZS5QqRQAGseUHHUWf1sK9F9PyOFThR2L4Y_ei3oFyQjvJHLX5zxoeRRrgPtstb9NNpQ5fZ_19Z2Jcq4ECUEbiqVqwU9ePo90j4Cce4QWBmpTqwwAvWEtbcDoSs8jtJhXJnyDweJ_06ukoAA8W6KROYfDx13BLXLNh2gKqRxbwqnSmtIGGBd3fbLWsNK-s8pUK4-neVJYq2Gxi73jbRJ2uqfWDltpD5Vjy_--WJFjuHrYoFKWwp-Aq6kIZLn3vCCH6jAGWBjhHBsdG3z24aifNnymWuGI2yK1TMMJGJnVx-clS3oel18QYsKuKUttqrLA1FNxs_U219ypaTmsOPWKr6eOUqT7zOM10jGqExXTQ3epVvarCKfpaoCRffxBj4InPwWF6pkwb5keYxQfygp1TAcJ-d784eqVh5lLH3W5DU9IiRsvoQ4EAlGH7YmAjayEkwZT7Zb4PvWj7pFejQExf8OLPlrZJKdXZVsyKM5WcwOpfN9rhU_3d9A85cxB_sP4DVTNOSniRhlLf_w1a5r4XcKt8zDnntkKANqaX5v3dM-1Cp5bwdAYyWrm3I2ALYjTGtNEAkGjWAXIgxUY5y45xPibQzGxJWqtFgpFBoqRNQfDtEH5cwnrbWO-oUgknxsNfiaDD7CgGOw==",
+              "format": "openai-responses-v1",
+              "id": "rs_0d688b3f17b746030169ce266844d88190bdf50a9b12c5532f",
+              "index": 1
+            }
+          ],
+          "reasoning_content": "**Planning flight booking**\n\nI need to start the process of booking a flight. First, I'll obtain the user's ID and clarify the trip details. They mentioned a one-way trip from New York, but I need the specific airport code. I should ask which NYC airport they prefer \u2014 JFK, LGA, or EWR. Then, I\u2019ll search for direct flights for the date of May 20, 2024, around 11 AM Eastern. I\u2019ll also confirm if they're looking for economy cabin only and if they're open to one-stop flights. Then, I can proceed with the search."
+        }
+      },
+      {
+        "role": "user",
+        "content": "User ID: mia_li_3668; any NYC airport (JFK/LGA/EWR) is fine\u2014please pick the cheapest; nonstop preferred but 1-stop is okay; 1 passenger in economy; must depart 11:00 AM ET or later on May 20 with no flexibility earlier or to other dates."
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"origin\":\"JFK\",\"destination\":\"SEA\",\"date\":\"2024-05-20\"}",
+              "name": "search_direct_flight"
+            },
+            "id": "call_4WHeyOYznTO5hMEtvsGkDAYt",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "reasoning_content": "**Searching for flights**\n\nI need to search for flights, focusing on direct and one-stop options from NYC airports to SEA on May 20, 2024. My goal is to find the cheapest flights among JFK, LGA, and EWR, specifically those leaving after 11 am ET. Although tools can only search by date without specific times, they should return available flights with timings. I\u2019m considering using either the search_direct_flight or search_onestop_flight functions for each origin. There\u2019s also a multi_tool_use.parallel option, but I\u2019m unsure if that's a permitted approach based on previous guidelines.**Planning flight searches**\n\nGiven the constraint to \"only make one tool call at a time,\" I think using multi_tool_use.parallel still counts as a single call, which seems compliant. I\u2019ll run parallel searches for six combinations: three origins for direct flights and three for one-stop flights, all targeting the date of May 20, 2024. This way, I can efficiently find the best options without violating the guidelines. Let's proceed with that plan and see what results come in!",
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": "**Searching for flights**\n\nI need to search for flights, focusing on direct and one-stop options from NYC airports to SEA on May 20, 2024. My goal is to find the cheapest flights among JFK, LGA, and EWR, specifically those leaving after 11 am ET. Although tools can only search by date without specific times, they should return available flights with timings. I\u2019m considering using either the search_direct_flight or search_onestop_flight functions for each origin. There\u2019s also a multi_tool_use.parallel option, but I\u2019m unsure if that's a permitted approach based on previous guidelines.**Planning flight searches**\n\nGiven the constraint to \"only make one tool call at a time,\" I think using multi_tool_use.parallel still counts as a single call, which seems compliant. I\u2019ll run parallel searches for six combinations: three origins for direct flights and three for one-stop flights, all targeting the date of May 20, 2024. This way, I can efficiently find the best options without violating the guidelines. Let's proceed with that plan and see what results come in!",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Searching for flights**\n\nI need to search for flights, focusing on direct and one-stop options from NYC airports to SEA on May 20, 2024. My goal is to find the cheapest flights among JFK, LGA, and EWR, specifically those leaving after 11 am ET. Although tools can only search by date without specific times, they should return available flights with timings. I\u2019m considering using either the search_direct_flight or search_onestop_flight functions for each origin. There\u2019s also a multi_tool_use.parallel option, but I\u2019m unsure if that's a permitted approach based on previous guidelines.**Planning flight searches**\n\nGiven the constraint to \"only make one tool call at a time,\" I think using multi_tool_use.parallel still counts as a single call, which seems compliant. I\u2019ll run parallel searches for six combinations: three origins for direct flights and three for one-stop flights, all targeting the date of May 20, 2024. This way, I can efficiently find the best options without violating the guidelines. Let's proceed with that plan and see what results come in!",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpziaRdLM8ld4kNAHJFmErp9eKDecYeB3YaRY6LBLWrSPl3W-KJn3t4jwYiilJnN8YH9BvH02Bkpk_jnLXZPv1-PbHSE1XUIrOQ1t_e83Pzm94ePotUAyb9ms5PpJtDzZ9MyM0I7izrym3Rr50t6H83Vbo5uCJhuw1Gu5PmDyTtjU2ylchqofow5ApXrTCFxyvx4ZlRsP8fNoZ4sZv5L0SFcYTcHL_bvrVJUcyt47OHU2YBXLy-zVrkY91hGWRPEpWrUSbEfl5-mvQT6Ws9JFzhIxOvx9RKbjNz4SdYfM-CS-YjEMoznvP5cITzT8JW09-qNCPGzX0tvcDaGGtJR8R1PdfV8kR6fsl7r-N4u-Dy7PrRNR9GWFKLLC6YW8X0dTIcTApyOOj9GTH_PmGtBhSwuZpcDl-DzfnOfXACweVJ0jh9Kk0YrMLQB_m3Ro6ruQWl4pKJwXL_MTQYxKWNOop45cTSeGKKF4SbyLg_kvFDUyW7SVjnTLEDjIs15RDdKK1eRU1-FMnlz9kZjhpUlRMpF7KILTodPhaEQeICFPMsV41hvavJU2fowdyvibpzAeuSXZbN3GxzJfQWXM-jXV9ueRip8-V9BLFUeN3xOf9K2Ef0n-Vl4I2_RKW5HEOkf0Tv8FHWOR4R1VcdHEgW9NcNO1iExUb6HLL-N0Jo0ZN2ISSiC43_p8fg2MOm_liXUUrhkK94v-VdZj2DLYVfOXbJIzwBYdTjAvwl2YdZUMqss9AtO46nQ2-vDRl2SzseWZDMpaL2DHWzCU_Dk73J50nk4f0CYcB5_7ywhtAY0hFsBzHNhQOtvwAIfwFQe4ahqSRxL1ePYa1ExnwBSjj-sPvMnvmHTfeT9WVrvj9bEbgxGOvX46dLMjt8LVoqFIFBey-5ovlMC0Ag6LtyBQ3h8KoJQwE5IdE0fJi9CwMHvAMTvJW1Gpt9RWrk3vpI4ARLXrd_vv9UtTQNOTK6iQFNN-MEbQFrSjjOnwrlK2OYK0NT-m_rOKH_JC6XgzsgrW3SVE1ltcVq2pWvUblusFNnlx7WwuaIVh7dPWnsDA6UWcwS6Cet4-Gmbc2wBYZNnsftlA2lyg8IUAtyPWiN2mJFXlr7Qr0BcqiISuKgGR_DLd1Fm0-92FDvF4zXZdULWP-7olnsRIWm1HU7Oa4_54TA2aexdSJJsOGtJCbU9a1nE8uTW3h5wRRqbUjo9LpXe0ZdY0bgvIGvkfBBRMJ6OzQQgwnCQ1W-PlO8ipv2t1aU34zsUFn4Nu8fC6QCKbiu892JY8m4oknRZlkJn5NAPBlCPRLwt-KOARMijtG3Y1t1vryEudZeLhPruRej73CZKnJLe_onDfhQRmAn14a0PUaF0CxeCsxsMmJyCEX3oohnXXA7cknmyfO6bNw8QQHcSgpNWPtOz2mZ3DjZ4snNsuvOjsljNUpvNvCEfREQSV4rn6q9JSB_jjPHTGdH7Lbha0S69yt6PBCpNgljQ-ertRMCJCe6OTWCCQliMAqBzIcwUdgc96Y6wTo-gdoBuqDnJ9K_9hBxHRuUrjPZxclLkGqXIwbInHgo2FQdCoWbGouMCH7iA3vpdBrustOVBaXZGmAj-VOLATxe-_uVqM3jJj-LEUH1cyKKxYgM-AJ3mrUfe-aBVs24snIaG0k-cx9EhomaPDVVscsCOzfJhgeZtP59Wf2jd5fo1-70ZsUjyK73ECjX07Pq5eEccal54sJOz0oF3VMBpRGz-wl3OdKyhNw4M-Ru8ogGr2FpZpJD6FYfR1OH0WJehSlJmiA4f_nYFoelCvIzXM1lTK2LaG6j_IHJIINZQH0Jyc68XLi-VTZnOJbhOk4JuZTF4gjgtS6QuIeYXZDpP6Q9WsTBm_FcxeRI6br6Gy60Se62QANrsjZM4YHllQ8yLDSiSs7FT_-5Wwm_EQMZp3upgd_2szZDh5i4M2BB5m1fNN1DKKvD8yhkvKaiQR--lezc34VD77I7jM-CYjVmPofW2CGO-wpBEqKX9C0K4928bkdGAMcOhdJSwzUAVLzA3Z7psmZ_04Cz6XCBThrKV2739f-_UW2Koph6-W0BSoBcD3tMbqfa84PWGCvW2Cp0od8hi7etV5K5jhz0wvURV984Hw96QzN3hldrvvR8olA6xx12iMwXSj3OAvbf3k9zbaCxf1ZdXgbNOXSgkXLhMEo_mlGZD7AB0A-HtTqHKxjwdE9lwNm4XLNX1JywrxLnqD7we6DTpDob5-glCmqmwElXCTdD8ErHVYVniwszv9DghA4zAlnElrvUVv4JcS-j-15qfmbb_IXH7DMQE-91QFUhmwDTDCB7r52VNomB5o1HBA919cGce8vdFU5BBCYjtaxt3OZ7yZjtcDWqLKjZZm2x9chU060YOSRDeeOtEtW0A==",
+              "format": "openai-responses-v1",
+              "id": "rs_038be21e733fa0d60169ce268379a4819691a0005c9d0b6302",
+              "index": 1
+            }
+          ],
+          "reasoning_content": "**Searching for flights**\n\nI need to search for flights, focusing on direct and one-stop options from NYC airports to SEA on May 20, 2024. My goal is to find the cheapest flights among JFK, LGA, and EWR, specifically those leaving after 11 am ET. Although tools can only search by date without specific times, they should return available flights with timings. I\u2019m considering using either the search_direct_flight or search_onestop_flight functions for each origin. There\u2019s also a multi_tool_use.parallel option, but I\u2019m unsure if that's a permitted approach based on previous guidelines.**Planning flight searches**\n\nGiven the constraint to \"only make one tool call at a time,\" I think using multi_tool_use.parallel still counts as a single call, which seems compliant. I\u2019ll run parallel searches for six combinations: three origins for direct flights and three for one-stop flights, all targeting the date of May 20, 2024. This way, I can efficiently find the best options without violating the guidelines. Let's proceed with that plan and see what results come in!"
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_4WHeyOYznTO5hMEtvsGkDAYt",
+        "name": "search_direct_flight",
+        "content": "[{\"flight_number\": \"HAT069\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"06:00:00\", \"scheduled_arrival_time_est\": \"12:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 17, \"economy\": 12, \"business\": 3}, \"prices\": {\"basic_economy\": 51, \"economy\": 121, \"business\": 239}}, {\"flight_number\": \"HAT083\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"01:00:00\", \"scheduled_arrival_time_est\": \"07:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 7, \"business\": 3}, \"prices\": {\"basic_economy\": 87, \"economy\": 100, \"business\": 276}}]"
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"origin\":\"EWR\",\"destination\":\"SEA\",\"date\":\"2024-05-20\"}",
+              "name": "search_direct_flight"
+            },
+            "id": "call_0j48qTosEEcBcUvSf3FuBatX",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": null,
+          "reasoning_details": [
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpziadBHRmK_BhiYRwrDOFAwjJLzXbQIeF969yjeeCHmGptoJnXypFSTOWiuFcl1axg_ADXszgXVd6HWhz7MK5G2xQqOSCDGKfoM5kiL2ssinWSx42y1tN-9G6bVfOod_N4Qqxeypw-kPDfJkNb1fjrNRsOiCkuVjcI5z1r-v14Wz1A0ehuvQCYebGuA35zIEl4EnTAqp5NpvacD1KOkYMvSu5S4oJQxPWObUOw9IP5aMgRCkBf-IxQ1IrwlCVUdfz_GP0RCxj8OLp1ZchlmZBf8xwODu3YCL4tu3Tx40mjACm-nwIcTvQkT8TTj6uCmCBaS8wJhMK3aWbN7HcuvYq60872cT2Wk1IyqZ6HEVyzG3TwuXBLDMgP981Jx6-e2tHQbDsTOPgjUuZbpsvdkiRt_JMtnuVokrMfFhaFp2U4HMhs491u8sSiqlH7naXQw0R37U5R68K_akGMzq4Z4mq0tcOlB93j2FTHH5X0XXneaHYlX2KEfQKP-I1Ve_InkqYyf0rc4bqw3q5lFz4KScOIh0hMHjkGgc0uuyoouxM4R9EndiRewF_XvPb56KGdPG--UdtTQ0XSQXsuZ7C5lf2rZ1WBZ60jRQNt1_mMYhscX4_epAYN3H5Kzb5Fwehp9J-FdptmxbIkVLwQUrFSy3OIRoo9j5S0LGWMGuzXpUeRTNLMoQD_Np3qy_nmlqcOk9CV2g0leshrbW0frFhXSldcku-2PB2dEur8_3y1X3C_CGIYwZgGohpx3IY2uBRwzGxEji8j0Rf3xzMNOxxA8cTUaj9_7SsooqXDKIuayn6Wr7pxXuoKxj1tTXipNyRtea2bCE2_vIsYtXjgt8ynK_nyWJYgJ1qKIq0FE8oE2fFz_Z0ZxXNgueBK56G8q7dRf1E_e4ZUaBCvI1u522I8hwlSZGhNxURest2wFrMTbKyR257WRMKpIKT0VEH6attb6kJg80o2bUKcoiG1Z6fmgUTGsDQQpPLdyj6WS_QNGLRJmPAl1aIgXCT66BDK5Oi75BR4zrRsIlOq6VN5phZsqLXfFQ-iRinOIwWO0pOQv1GqQKuAD2ZuTagX9mkHaebwWee6TPDyMUn_tQzDbi-yTus-W_P3mRK6l0S3swxdyqpdB6CdQuHuKMqJ8ETOXLLJrApnPaMkdUS2UCqov77KMGyWp3zORJfiJKBlLn-zWITaie4ehQEXDD9HWPv22_yBut5pim55VaIHJbz0FMUvW17pRE0IrJrfLhBQTElRrCuGmnac7QZ6mGjh4HIh6sZkmNzwIrpuKQkb1YbckVxsZQSD9TS-yloOCSzKUAB7bQeIw1TCFMb6pF6MY8TsOoyfkzVMKer0Xz3iPm-CZ8cv-PAftydNuG0TyuokInFmyAuagAUlBWfv6xxcteM6Lht9pnHs9dcHHaRZEhGA31pPv0yMmRCaTjSZkAG5kXXHZXcY1nEvZfGdadUcgqH_lz23PV_AZvy0tggJ65bBsfWxwRcnvBwzd21miBpA1zHCPel7u67pGcDos7cKVAkm1GTqobgbrpEp8DLmWnC7gxva4idqhHgheNSn3tbD4MaCoqkd-AJc79a4WQ1MjiaWLPoAS6YU4PFA-hvtzQgJEriVzuNRxLv7xajAvujFT9bFNoaFB4UuNhfvEueYNbQUhSjRBbvodXe0c8a8Spm2Tk4w3uCCYLWXuJWboSziSRTpqVgP6hSwBid2MJicl6tu52sLDv08YbB6BnNoUlS9TM_hLyPMfJIIic7zHF_mpA7xVcUwzbGFSxmilg0S8z5kFd3FxSW-9RNDES0LHte7QV3JLtVDftGcrwOphPLexgNedOEd72-7U3J7UT-bepsJ7IhPyRYI8EdXnqs0G5JaflIsEJOCeNdUYLgLerqJsgVCetaZpiYsObLoG0BLXqvE62OOMQtesw1FvOMOB6ied9lpESk-KNBOb_gQKfvErdBR4xbdhap-1tnWL8WFWnuj_-bEx_iKEjiz-VB_UxbF1A_11A3zVBqYnMzAp01tOhZkAkmEg-wIbtdWPBqL_5F32Ck2CKv3pTGIrsx9hh2nNLx5pxVzaazqH0jNhJGV38cJL3rx_y-GXt86vY59sRIU8C712_eF8MDqgBKULvcn3Bvf7x_RWJhiF-zoil7NofYJZLhffdyD4aWF09fanMjVst4NHdE2grHj7Hy8wIf5nLACZ7tS4n6YxXx082BH5q0JYRjg7yGwhAvRSZd2CJBIIOGsEse_6fm6J6R9_B3gID_DuFhPIeTo-EuOkURY_nr7AX2sQe6iexBMTO5T9yigIak-sbHF5bpHtcCcYTGSDX05p5oLrcfocbjI9LqTjvq1GPVVTHOSLr1AFZShColfksmBdJZ52B3c16uFKjRIRKsGtdKF8O-8-iu4WnwwYuHJa8Vv6iyMe6AeCDU3xljtDp6pYfWBpC2C30M19UyHR002oePeCb4GcEwI-1v3sTNbdWNl5ZCg0VcheiIJGk-TJt-FrXIlhMmpjkUd8yK1tlyiBlhc-CMlAz0eMehHAgvNtMZS5XOeXZrIndKALPMHs8mafqHIRpyIr8Wgv-QrJUGgsWrMf27orjHkYeY_kQClC9yOJTP_JU=",
+              "format": "openai-responses-v1",
+              "id": "rs_0b670712c744c6670169ce2692d39081908e54fddea7d84aac",
+              "index": 0
+            }
+          ]
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_0j48qTosEEcBcUvSf3FuBatX",
+        "name": "search_direct_flight",
+        "content": "[]"
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"origin\":\"LGA\",\"destination\":\"SEA\",\"date\":\"2024-05-20\"}",
+              "name": "search_direct_flight"
+            },
+            "id": "call_ii73B9Cc937KqYIqOxJYcOSS",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": null
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_ii73B9Cc937KqYIqOxJYcOSS",
+        "name": "search_direct_flight",
+        "content": "[]"
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"origin\":\"JFK\",\"destination\":\"SEA\",\"date\":\"2024-05-20\"}",
+              "name": "search_onestop_flight"
+            },
+            "id": "call_SSYWajyJ5eDvP7Oo6XRMgFrn",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "reasoning_content": "**Searching for one-stop flights**\n\nI found direct flights from JFK to SEA, but they only leave before 11 AM, which isn't suitable for me. So, I need to look for one-stop options departing after 11 AM on May 20. Since I can use any NYC airport, I\u2019m planning to check one-stop flights from JFK, LGA, and EWR to SEA. I'll make sure to use the search tool for each airport in a sequential manner. Let's get started!",
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": "**Searching for one-stop flights**\n\nI found direct flights from JFK to SEA, but they only leave before 11 AM, which isn't suitable for me. So, I need to look for one-stop options departing after 11 AM on May 20. Since I can use any NYC airport, I\u2019m planning to check one-stop flights from JFK, LGA, and EWR to SEA. I'll make sure to use the search tool for each airport in a sequential manner. Let's get started!",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Searching for one-stop flights**\n\nI found direct flights from JFK to SEA, but they only leave before 11 AM, which isn't suitable for me. So, I need to look for one-stop options departing after 11 AM on May 20. Since I can use any NYC airport, I\u2019m planning to check one-stop flights from JFK, LGA, and EWR to SEA. I'll make sure to use the search tool for each airport in a sequential manner. Let's get started!",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpziavogPkgZSZQ-iBOiP2zVIE-l3K3OTCxxylsARhYEe39DS7LK7u6n1qUEjCDbiFks9Eieg05XPMvkFz6NtuQnTAMDXHimeBmXKWm4567ifz-IAjt23J3q3O5PKY7nG5btMrqbtRc3JvvR7X9LuHrrs_Q7TDk2T05ydpiKjz1HcPmrPMLVRTpDYM8WDOUWx91rcp3WTnjPbH43I-08TyTeGRUEvyGPJVjQKD0iGK6ZF-muSq2fc7blZqvwdW_gNOKVonHOQ7sF0eZP6Iexmowy6Njs4-xH1XJDs64EhJ2-3i46B0RpkYViXkDoIY3cYYOl28ho7KEQQdpLmI8yowa1v8qGKjt9AZMO1AseW7HXKUJQXFfG7L84r8E_zRCtFKOsVI-yOGXN9AESK_w5kQpWmV8RnOHqyApmNY8Uhh-IzOcjinJQzi1DTGoo8uqZIAbhLTm8fr_yq110dlPQQmhQrbfPKKg9f6WnCJnPvMh4pfDS5rYGAjljpfe_l2XtIrSMDvp0a0X5jN1sGINKGy-GjkBM5-0oo3vnonDsdfX_W04swmEfJtmnccu_jhyzHRwGllmnUpDTsKDQ3fT73BLEgq1HFWJDTuLZD2pKsaKaYGXdqYZQek3_xoaYNoNtc0waOpNW7DwHgKSGxc7UT5xTDxajwLIl9HGXeJHQfTQq47PeqtFTxJTLMvMSSLm7pewTJ7BQRK4q16YUqOdhQzD2EQoWwmjWW98wspj7l0LlaAAmOqudc8i_m4x9zwjqe-QApLioF6xyI_vIukjscu5LCVE84SNrFr3XSpMvRkkXBtSSiBIvnf-tmtQWRK_dpC6HT_htr2PWZPgr9p83FgR_1yjkfqjZ7_sSK0Ikw9-fH3KVCe8l3hpRAlUa3uS3etXgUnRxmlKhhrZu3BcdrlVL88E8-QTPa9faSuBeDN6GUDVGoIOuY8_ncz4POQeU0UsAY_H-Qvu4BWbCPMiw1rYbLS0x5QXtzdihhu9DWp0B1ohigkey7OpDf9zOJi9HdLy2kUcaAAtzJW8fiPUYx8MO0pqD4eR-Bnj1QgO-n5J7r7IQa8Bdz1xwMy1Vi74-8K0WpXIIlZ_dzrvkv8n0wPCcNYdwiHibL5XVr5j9nMuYXg5dV3WjtIpSr5DVL-NIRIdWmcGgugfwEBF1DgeTWfgO_7JEl1dkcY1q2BdYl96Bk0jSM3TlxW8LIeEipXCyIgQv51_bAe937xvX4-DuITWtvxHZ7Ec5nRr_OzkDDiFPD7Paueua9_A1MpiSeRIFSGEiSjvDRfZEjaqgpV_Txx4kaSob7uBbmXpKWrFDMtu0qsIq70BplEuhM2dLTq2B7PkJD3mBtxSXDIa3eaYHGcI_0PZzmOsFCjTdJ1ygKHPtT857qWptOkLXCzUIy5JoUN4LwX8bkecJhm6IskqOMVNl3W4w==",
+              "format": "openai-responses-v1",
+              "id": "rs_06b8ede232c89c240169ce26a14aac8190a57d4eae093b8b93",
+              "index": 1
+            }
+          ],
+          "reasoning_content": "**Searching for one-stop flights**\n\nI found direct flights from JFK to SEA, but they only leave before 11 AM, which isn't suitable for me. So, I need to look for one-stop options departing after 11 AM on May 20. Since I can use any NYC airport, I\u2019m planning to check one-stop flights from JFK, LGA, and EWR to SEA. I'll make sure to use the search tool for each airport in a sequential manner. Let's get started!"
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_SSYWajyJ5eDvP7Oo6XRMgFrn",
+        "name": "search_onestop_flight",
+        "content": "[[{\"flight_number\": \"HAT057\", \"origin\": \"JFK\", \"destination\": \"ATL\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"09:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 3, \"business\": 9}, \"prices\": {\"basic_economy\": 76, \"economy\": 141, \"business\": 477}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT039\", \"origin\": \"ATL\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"22:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 10, \"business\": 2}, \"prices\": {\"basic_economy\": 52, \"economy\": 103, \"business\": 283}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT136\", \"origin\": \"JFK\", \"destination\": \"ATL\", \"scheduled_departure_time_est\": \"19:00:00\", \"scheduled_arrival_time_est\": \"21:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 15, \"economy\": 14, \"business\": 2}, \"prices\": {\"basic_economy\": 52, \"economy\": 152, \"business\": 277}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT039\", \"origin\": \"ATL\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"22:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 10, \"business\": 2}, \"prices\": {\"basic_economy\": 52, \"economy\": 103, \"business\": 283}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT218\", \"origin\": \"JFK\", \"destination\": \"ATL\", \"scheduled_departure_time_est\": \"18:00:00\", \"scheduled_arrival_time_est\": \"20:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 12, \"economy\": 1, \"business\": 4}, \"prices\": {\"basic_economy\": 76, \"economy\": 158, \"business\": 342}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT039\", \"origin\": \"ATL\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"22:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 10, \"business\": 2}, \"prices\": {\"basic_economy\": 52, \"economy\": 103, \"business\": 283}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT268\", \"origin\": \"JFK\", \"destination\": \"ATL\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"09:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 17, \"economy\": 19, \"business\": 12}, \"prices\": {\"basic_economy\": 91, \"economy\": 101, \"business\": 453}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT039\", \"origin\": \"ATL\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"22:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 10, \"business\": 2}, \"prices\": {\"basic_economy\": 52, \"economy\": 103, \"business\": 283}, \"date\": \"2024-05-20\"}]]"
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"origin\":\"EWR\",\"destination\":\"SEA\",\"date\":\"2024-05-20\"}",
+              "name": "search_onestop_flight"
+            },
+            "id": "call_z8uks2xCtc0G6PvKrTfOiyqe",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": null
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_z8uks2xCtc0G6PvKrTfOiyqe",
+        "name": "search_onestop_flight",
+        "content": "[[{\"flight_number\": \"HAT213\", \"origin\": \"EWR\", \"destination\": \"DFW\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 0, \"business\": 2}, \"prices\": {\"basic_economy\": 56, \"economy\": 106, \"business\": 355}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT067\", \"origin\": \"DFW\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 4, \"business\": 12}, \"prices\": {\"basic_economy\": 98, \"economy\": 149, \"business\": 412}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT213\", \"origin\": \"EWR\", \"destination\": \"DFW\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 0, \"business\": 2}, \"prices\": {\"basic_economy\": 56, \"economy\": 106, \"business\": 355}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT099\", \"origin\": \"DFW\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"16:00:00\", \"scheduled_arrival_time_est\": \"20:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 14, \"economy\": 20, \"business\": 16}, \"prices\": {\"basic_economy\": 57, \"economy\": 173, \"business\": 386}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT213\", \"origin\": \"EWR\", \"destination\": \"DFW\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 0, \"business\": 2}, \"prices\": {\"basic_economy\": 56, \"economy\": 106, \"business\": 355}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT234\", \"origin\": \"DFW\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"19:00:00\", \"scheduled_arrival_time_est\": \"23:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 5, \"economy\": 5, \"business\": 19}, \"prices\": {\"basic_economy\": 90, \"economy\": 149, \"business\": 474}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT231\", \"origin\": \"EWR\", \"destination\": \"DFW\", \"scheduled_departure_time_est\": \"16:00:00\", \"scheduled_arrival_time_est\": \"19:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 12, \"business\": 6}, \"prices\": {\"basic_economy\": 71, \"economy\": 171, \"business\": 204}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT067\", \"origin\": \"DFW\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 4, \"business\": 12}, \"prices\": {\"basic_economy\": 98, \"economy\": 149, \"business\": 412}, \"date\": \"2024-05-20\"}]]"
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"origin\":\"LGA\",\"destination\":\"SEA\",\"date\":\"2024-05-20\"}",
+              "name": "search_onestop_flight"
+            },
+            "id": "call_IHQiQBW4YuWnHMYOTDKqxLtE",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": null
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_IHQiQBW4YuWnHMYOTDKqxLtE",
+        "name": "search_onestop_flight",
+        "content": "[[{\"flight_number\": \"HAT002\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:30:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 12, \"business\": 15}, \"prices\": {\"basic_economy\": 53, \"economy\": 175, \"business\": 344}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT045\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"02:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 3, \"business\": 1}, \"prices\": {\"basic_economy\": 78, \"economy\": 196, \"business\": 437}, \"date\": \"2024-05-21\"}], [{\"flight_number\": \"HAT002\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:30:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 12, \"business\": 15}, \"prices\": {\"basic_economy\": 53, \"economy\": 175, \"business\": 344}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT156\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 4, \"economy\": 20, \"business\": 3}, \"prices\": {\"basic_economy\": 80, \"economy\": 122, \"business\": 361}, \"date\": \"2024-05-21\"}], [{\"flight_number\": \"HAT002\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:30:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 12, \"business\": 15}, \"prices\": {\"basic_economy\": 53, \"economy\": 175, \"business\": 344}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT251\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 4, \"business\": 9}, \"prices\": {\"basic_economy\": 68, \"economy\": 181, \"business\": 470}, \"date\": \"2024-05-21\"}], [{\"flight_number\": \"HAT114\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:30:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 2, \"business\": 9}, \"prices\": {\"basic_economy\": 69, \"economy\": 186, \"business\": 284}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT045\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"02:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 3, \"business\": 1}, \"prices\": {\"basic_economy\": 78, \"economy\": 196, \"business\": 437}, \"date\": \"2024-05-21\"}], [{\"flight_number\": \"HAT114\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:30:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 2, \"business\": 9}, \"prices\": {\"basic_economy\": 69, \"economy\": 186, \"business\": 284}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT156\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 4, \"economy\": 20, \"business\": 3}, \"prices\": {\"basic_economy\": 80, \"economy\": 122, \"business\": 361}, \"date\": \"2024-05-21\"}], [{\"flight_number\": \"HAT114\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:30:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 2, \"business\": 9}, \"prices\": {\"basic_economy\": 69, \"economy\": 186, \"business\": 284}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT251\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 4, \"business\": 9}, \"prices\": {\"basic_economy\": 68, \"economy\": 181, \"business\": 470}, \"date\": \"2024-05-21\"}], [{\"flight_number\": \"HAT201\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"03:00:00\", \"scheduled_arrival_time_est\": \"07:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 15, \"economy\": 19, \"business\": 14}, \"prices\": {\"basic_economy\": 100, \"economy\": 118, \"business\": 272}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT045\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"02:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 3, \"business\": 1}, \"prices\": {\"basic_economy\": 78, \"economy\": 196, \"business\": 437}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT201\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"03:00:00\", \"scheduled_arrival_time_est\": \"07:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 15, \"economy\": 19, \"business\": 14}, \"prices\": {\"basic_economy\": 100, \"economy\": 118, \"business\": 272}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT251\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 4, \"business\": 9}, \"prices\": {\"basic_economy\": 68, \"economy\": 181, \"business\": 470}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT219\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"18:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 2, \"business\": 18}, \"prices\": {\"basic_economy\": 85, \"economy\": 188, \"business\": 397}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT045\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"02:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 3, \"business\": 1}, \"prices\": {\"basic_economy\": 78, \"economy\": 196, \"business\": 437}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT245\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"04:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 5, \"business\": 1}, \"prices\": {\"basic_economy\": 93, \"economy\": 132, \"business\": 420}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT045\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"02:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 3, \"business\": 1}, \"prices\": {\"basic_economy\": 78, \"economy\": 196, \"business\": 437}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT245\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"04:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 5, \"business\": 1}, \"prices\": {\"basic_economy\": 93, \"economy\": 132, \"business\": 420}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT156\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 4, \"economy\": 20, \"business\": 3}, \"prices\": {\"basic_economy\": 80, \"economy\": 122, \"business\": 361}, \"date\": \"2024-05-20\"}], [{\"flight_number\": \"HAT245\", \"origin\": \"LGA\", \"destination\": \"PHX\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"04:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 5, \"business\": 1}, \"prices\": {\"basic_economy\": 93, \"economy\": 132, \"business\": 420}, \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT251\", \"origin\": \"PHX\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"12:00:00\", \"scheduled_arrival_time_est\": \"15:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 4, \"business\": 9}, \"prices\": {\"basic_economy\": 68, \"economy\": 181, \"business\": 470}, \"date\": \"2024-05-20\"}]]"
+      },
+      {
+        "content": "Thanks, Mia. Here are the available options departing 11:00 AM ET or later on May 20 in economy. No nonstop flights meet your time window; below are the cheapest 1-stop options across NYC airports:\n\nCheapest\n- JFK \u2192 ATL \u2192 SEA\n  - HAT136 JFK-ATL: Departs 7:00 PM, Arrives 9:30 PM\n  - HAT039 ATL-SEA: Departs 10:00 PM, Arrives 3:00 AM (+1)\n  - Economy fare: $255 total (152 + 103)\n  - Seats available\n\nAlternative\n- JFK \u2192 ATL \u2192 SEA\n  - HAT218 JFK-ATL: Departs 6:00 PM, Arrives 8:30 PM\n  - HAT039 ATL-SEA: Departs 10:00 PM, Arrives 3:00 AM (+1)\n  - Economy fare: $261 total (158 + 103)\n  - Seats available (only 1 seat left on JFK-ATL, which is fine for you)\n\nNext cheapest from another NYC airport\n- LGA \u2192 PHX \u2192 SEA\n  - HAT002 LGA-PHX: Departs 9:00 PM, Arrives 1:30 AM (+1)\n  - HAT156 PHX-SEA: Departs 7:00 AM (+1), Arrives 10:00 AM (+1)\n  - Economy fare: $297 total (175 + 122)\n  - Seats available\n\nEWR options exist but are pricier or lack economy on the first leg.\n\nWould you like to book the cheapest JFK \u2192 ATL \u2192 SEA option for $255 in economy for 1 passenger? If yes, please confirm and provide:\n- Passenger name (first and last) and date of birth (YYYY-MM-DD)\n- Payment method from your saved profile (credit card or gift card)\n- Checked bags to add (0 by default; you get 1 free checked bag in economy if eligible by membership\u2014please confirm your membership status or I can look it up)\n- Travel insurance for $30 (yes/no)\n\nOnce you confirm, I\u2019ll proceed to book exactly as listed.",
+        "role": "assistant",
+        "tool_calls": null,
+        "function_call": null,
+        "reasoning_content": "**Evaluating flight options**\n\nI\u2019ve got some search results to review! I need to keep in mind that the departure has to be after 11 AM ET. Direct flights from JFK to SEA at 01:00 and 06:00 aren\u2019t acceptable since they\u2019re before 11. EWR and LGA don\u2019t have direct options. For one-stop flights, we found JFK via ATL with second leg times that work: those at 18:00 and 19:00. The total fares I calculated are likely around 255 or 261 for economy options. Also, EWR via DFW has acceptable first legs at 12:00 and 16:00.**Assessing flight combinations**\n\nI see there\u2019s no economy availability for HAT213, which means I can\u2019t book that leg, and it ruins the 12:00 combo options. However, EWR HAT231 at 16:00 does have 12 economy seats available, connecting to HAT067 at 23:00. The economy fare totals 320. For LGA via PHX, the first legs at 21:00 and 14:00 work. The economy prices vary based on different combinations. It's also fine to include connection options that arrive the next day within the departure time requirement.**Presenting flight options**\n\nThe cheapest option appears to be JFK-ATL departing at 19:00 (HAT136), followed by ATL-SEA at 22:00 (HAT039), totaling 255. There's another option with JFK at 18:00 for 261, and LGA at 21:00 via PHX for 297. Since the user wants the cheapest option among NYC airports, I should propose the 19:00 option. Before booking, I need to confirm passenger details, including full name, date of birth, and payment method, as well as questions about baggage and insurance. I'll present these options and later request confirmation on the selected flight.",
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": "**Evaluating flight options**\n\nI\u2019ve got some search results to review! I need to keep in mind that the departure has to be after 11 AM ET. Direct flights from JFK to SEA at 01:00 and 06:00 aren\u2019t acceptable since they\u2019re before 11. EWR and LGA don\u2019t have direct options. For one-stop flights, we found JFK via ATL with second leg times that work: those at 18:00 and 19:00. The total fares I calculated are likely around 255 or 261 for economy options. Also, EWR via DFW has acceptable first legs at 12:00 and 16:00.**Assessing flight combinations**\n\nI see there\u2019s no economy availability for HAT213, which means I can\u2019t book that leg, and it ruins the 12:00 combo options. However, EWR HAT231 at 16:00 does have 12 economy seats available, connecting to HAT067 at 23:00. The economy fare totals 320. For LGA via PHX, the first legs at 21:00 and 14:00 work. The economy prices vary based on different combinations. It's also fine to include connection options that arrive the next day within the departure time requirement.**Presenting flight options**\n\nThe cheapest option appears to be JFK-ATL departing at 19:00 (HAT136), followed by ATL-SEA at 22:00 (HAT039), totaling 255. There's another option with JFK at 18:00 for 261, and LGA at 21:00 via PHX for 297. Since the user wants the cheapest option among NYC airports, I should propose the 19:00 option. Before booking, I need to confirm passenger details, including full name, date of birth, and payment method, as well as questions about baggage and insurance. I'll present these options and later request confirmation on the selected flight.",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Evaluating flight options**\n\nI\u2019ve got some search results to review! I need to keep in mind that the departure has to be after 11 AM ET. Direct flights from JFK to SEA at 01:00 and 06:00 aren\u2019t acceptable since they\u2019re before 11. EWR and LGA don\u2019t have direct options. For one-stop flights, we found JFK via ATL with second leg times that work: those at 18:00 and 19:00. The total fares I calculated are likely around 255 or 261 for economy options. Also, EWR via DFW has acceptable first legs at 12:00 and 16:00.**Assessing flight combinations**\n\nI see there\u2019s no economy availability for HAT213, which means I can\u2019t book that leg, and it ruins the 12:00 combo options. However, EWR HAT231 at 16:00 does have 12 economy seats available, connecting to HAT067 at 23:00. The economy fare totals 320. For LGA via PHX, the first legs at 21:00 and 14:00 work. The economy prices vary based on different combinations. It's also fine to include connection options that arrive the next day within the departure time requirement.**Presenting flight options**\n\nThe cheapest option appears to be JFK-ATL departing at 19:00 (HAT136), followed by ATL-SEA at 22:00 (HAT039), totaling 255. There's another option with JFK at 18:00 for 261, and LGA at 21:00 via PHX for 297. Since the user wants the cheapest option among NYC airports, I should propose the 19:00 option. Before booking, I need to confirm passenger details, including full name, date of birth, and payment method, as well as questions about baggage and insurance. I'll present these options and later request confirmation on the selected flight.",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpzibcnB6YNy8SoMaOFhWcgcjy8e1c9FbOduxQEPiy3Ttpnwu39F7QoDmNtdrDo3-BRPZM5U0dDY67BlJgzUUFMaHRDIKi4O0CjjCdEcKSLoixr7JxRu8NNexwoh5HHt42xdGzLsCb8g43BHUWy0mIxmkje2sqof7pchlmcV7WNWXEVXVWHIoJYKImjGCmjtoKmbfc_iRpclYwxQJPXny_WLICxYe8byIdqjTkpu_6eliiUJWMiBccWT1UZ2TK_cCUwZ8kTYnwU8WUIcn00tyCVr-SsXDdY1Av7LONgaRfTAd5h-ZxF60NOzvWsBz8twVjHGFJJNGN1FnUvHGrLvSnOSfwBIh7PMaDAPp_AtaZHWF7PGmBuFjkDT8DT9iGmwT-VXEIAWcyLJXfUhKNAvonX4akk9ZXcgT6sql29dLJylFw6WPF-S0VsQMUMhfZQNymKARYIsE4Ys3rfZJcb_FYcF-xgP1YVEgY7nD6lBcpwHivrB8qp0mc9FGCdxYd9AwKc6SKpMH9YIj6_0JHBnmLWlE_2kjY5i0SdEGkjwTFZ5C4u2xI8kygLB_99K4o-bnkaoXey4q9XZU3i00L5jH3q7BgpLm91rZlp4bQh1MiB1Q5Y8mVTXXzN7jCgIUqISk4PyomR1_PVxacPGnf6VyE8sMZVSbQeMyL8giO47X6da_m7yGaddaK4V1VUBlq83tcZQREGEMMcXpdW0hFnLhQv6JgEqSIIbhNoSss0O_eGZUyfm8BYQ65Geb9tS9kNW1QdRC_PzyZj3cRsobY7eKT58qJxRvDHVZoXh-SVDbJGwt-zHx2fZScgbJfu5ZzzHN9u6UWWmOA3Tp4ViMvIlL5kPa04pC6hDife5YJHkKjrtM4pvLHC8PCPrL577LKMkl-bhZSL2rZD2xlFqTfBzlveCAFRKbInfEZ_-TpLmjd3Lbmm0gwz-4HaABxhPJEKt3gqQzZgLd9_3yXST2aeqIo4rfzPu7dfcQxsTbr1SfZCPZm6Kc2P947y02hCZhXEl69cfOacmsR_QiHTIKYz8shJ0y2_gdu39ZAjMeYMQQfpktcDEAf3hHStooTfCiLw2lwn_9TDsEnE34RznH0thwzCQq19FWr2l2cnJearWVIlWBTkRy_HRNO_YyC8ANfWTDpqoG5rb0mDzCbOkXXjDoHfneJhCffsgr5PVZDfZRIE2S7Wbcg7GsWXg9C341pcVyKeATf2gk61ynoVsJlOu5_SzqgJsQFJDPVajAKTmCJF3ek11CdnoL0-kZJHtRHYS-ilAcqnIzcIxovI0BAXMPGYEmTl6vl8G9ZIS4v-v5KW91h44UXJ97zW23aKEQGcimPKikVKp72nMyii5IMYQB4zVm2pbxZlh7o6WEJpCcYOgdjKHTwn6nLCbTW237Qdxl4O4BrzKTQjg4BB37t4J5oCVpc32y_-Iut3ZLiSpuE3-rIvUa4ecEYlfBrIJcwLyoD-oF5qa3EaemfQvIBp35hU_GL_2i6EyjcolrFmA56XNOrTbHhZdVNdzQrjnInnoQvlBV3EWXQsTRD5kQyIGiYsEVX8Vd1a5jcvMbKr-bK_IsWQbDwYCpFxb1hB71BVftlqFmEeE02IAT5W5cobVI6GoenGe2BPwpZWQAId8yZyJxzhU0LFaodbvwSl0uj895k9GF3GuwoSw-gdOhIWwOJLb8wf6XLE5_aE2Ht6ltpzkDDunYImKJqCl61y5dmiwLlGpISjiYrOhYXkqEjsIOpr3gDa9yPVZdxfs4wcjLhLt4MKiQTeOdbFFmPuoEFSS6mjrts0PKY97JXylwsc29asDp7-s0CVJTRafk5UFe-EtloofUBFh5PtsHXBAe5A0MSJ2KnRGla1CaIgtIzwp3BZdufa6UU6GSPcATfBJi0L5chJ0ZpXNy6CQ_4jTO7bBioCwafXSJsKDalnFU-j-UtC2pXWiD9dJ39FcT44VJF5Ymz0y1jU7TB_wzhK9dRNdokSFMe_MGECobVtDAFLeeWujcVW7HXDwLRFdCG_AS5vUbQgmouEtl8NA3MhQ7bIv_pf7q-XBemc3Net4qBWrxzHrqsyyLRYLKCc4igC2gUpx5bnzUd8JtKa8LnoySD01ttkXanES7EpsD23ZYpYEVj16-vTGs8vcCp7h1Ggur8khOvPvomOlpoJC57cvcnJyB5BmBD7ex1Lg-Vl8-TwwFASDiguuGlgU4aNvXxEz-H3g-Gx7qDwj7RNBNQkgV9NEkyW8Oj-LTGGBpWxANPdUO8SYAb79riJASFn0mVp-73ZBrkePER-vmtnBWyfe4HJFgJ5acj_PH4Xsf2pDS1dPzYf98n4qETTTIN--8M-ybnHI33ZPf2Udg7bbfKxebXkp3a1zuXB0H-0SIVyGxDDPyZ3vPFVjtTPCBQ96Xr_T77hflglNUE9Awr6N9KckmQ3i_ywJsz1AcMHBFn6ebcKA7-LFdCID6vFNuBFKdQbEfxsGTK03PjiflqD67BADYVq3rUujV46ShtB2LFm059dQJwbtl1kgpbbc-LaTbltlSQtnW2EmjlcQcpCtNjjOErDFMKJKbX37Wg1AXWSSFBvEvz0nGMsnmsKP_eD91dwgSithSU7SP6xRSfAdwUREFrdtsw6IlbbB7W5UXKTRCvKUPz-ZbT1tPng_DryU0alPP6DxuKOcFppgmqmd9qVr_EF3IGZcukarfodQLkJumJBOtvys7xjqe72oCDt3FmyQC6MOEiuFfgOM1k0wvvu49bv-VTCuI-oi7nJQ6O1T4qXIOGp9FygA1yEud80w1jDCN6PYzRKtmqTI6frCmpt9RCmJPWX_sjiv7ZKBsHlNWjY13togEaDARwNIPYez81-so8gpS0A3YJpueaLgTWiHafc8meuwqfTtLWApfRjva-3OyPNTbWcNbQmf-IJQ92nGM7WL5w81Xdvp22em8o6hUbxnQaNLMfSpk8dPu5DmksA2NrBmt8uZ2l3i7C1sg2oRRs08GDVBw4Fq1LcBiX1M6SFHRg_Obbyis8ZiCjaqsEmolFuRyRBQVGxccJa48cHf_sz2n446l5vmvsBbX27JGD9tt4bZyl9_5frkgvy0lP51QoyIMUTJlzLgxIh4ReM8cD3KDM0mrdcUkfbftA9vioNr9kvhifUFa_pmKFtG1oWXgPtnXDV5d0wapr9n-kamLwsdRLOXqmnudrvQowVmYPuSyT8QYWJrXo3sjSqMVSOJWNHDbf8AH1OnxBuxFCBJZ4PqfiJ3CQtbBsvMzQiMKkYNgi5qaqbnxPFFPfKAk5l3ZTrE2vu84GHSu4wXcYoWk6R1nYrHI5TR-59o0sGICVi73JPWr3YkDXNXv3qa5j3IYVFWAkEXfGiLPujYS8sZ_gLGncKiZr4uvu4ux9FGCVdxuSJojJP-rHiYenBWlKn9GtXjsAbFJaMuOjBsRX2BqxNtaRCqOi3Kq0CMeGngzpQXka0532dLL5eHfSBlzEnKvJzN8Tmrlo7pSIefWwDxiKRIqdNVvQ7CerIIhppUmIMcEqqlGOqyTNLRQ3DMcUJvQU2vXbMCBX7b8eJqYBsAvzCUUOVCTqHUPVxcGjJ3N0TrcJiu1VdxxM-nu0Y_d-7-BeBiS8sd2S8Nq4E0wlQwZWslyjpNEq-bWTb7QpSq9TKw8XCW0zPm2jJPmv5fIgjTp5wqn4KAuYe6wnPjvolkcJeQe6VxpzLVRoLr8OSqhsg6MXS96cRAjdGkONnDCN59HB-RfzJfKwwebv766uIQ_pxuO-CIwPCCc56F4sSi3gogH6JBAFVMbUotp1YYYtEfcisfYv7nNE_Wd7YY60s8N1aFDgKMF-NhkeEOCiaarg0MkAoE3UHZgYkLlUPrCHuesx0L_egcmr_c4E0Q_lLi7kPWIcVLMrNpJ1aGY8qH9nw1cLQtDxZGGXEKw3wQghOUoRqGnc0Oe_VGlRgYR7G_UdAPY-KaQpJRnwMcJvmkEKbj_U-yyZVSUFleykWjeo5-00VIwMjh1nVgkifqqBQmPBoRyTS0OtqvDhCpF7170mFgr3TNu86g5bJEYRgZRlSSEjaDGK0_IbSIkf4Ijm85gWi8wUagRmhOkruk82WZv3nRs2yB19UVU9fiiJEUJIN_ft9qCw4Q==",
+              "format": "openai-responses-v1",
+              "id": "rs_02f9d077c825f1990169ce26c15e2c8197b29b686d021c3091",
+              "index": 1
+            }
+          ],
+          "reasoning_content": "**Evaluating flight options**\n\nI\u2019ve got some search results to review! I need to keep in mind that the departure has to be after 11 AM ET. Direct flights from JFK to SEA at 01:00 and 06:00 aren\u2019t acceptable since they\u2019re before 11. EWR and LGA don\u2019t have direct options. For one-stop flights, we found JFK via ATL with second leg times that work: those at 18:00 and 19:00. The total fares I calculated are likely around 255 or 261 for economy options. Also, EWR via DFW has acceptable first legs at 12:00 and 16:00.**Assessing flight combinations**\n\nI see there\u2019s no economy availability for HAT213, which means I can\u2019t book that leg, and it ruins the 12:00 combo options. However, EWR HAT231 at 16:00 does have 12 economy seats available, connecting to HAT067 at 23:00. The economy fare totals 320. For LGA via PHX, the first legs at 21:00 and 14:00 work. The economy prices vary based on different combinations. It's also fine to include connection options that arrive the next day within the departure time requirement.**Presenting flight options**\n\nThe cheapest option appears to be JFK-ATL departing at 19:00 (HAT136), followed by ATL-SEA at 22:00 (HAT039), totaling 255. There's another option with JFK at 18:00 for 261, and LGA at 21:00 via PHX for 297. Since the user wants the cheapest option among NYC airports, I should propose the 19:00 option. Before booking, I need to confirm passenger details, including full name, date of birth, and payment method, as well as questions about baggage and insurance. I'll present these options and later request confirmation on the selected flight."
+        }
+      },
+      {
+        "role": "user",
+        "content": "Yes\u2014please book the cheapest JFK \u2192 ATL \u2192 SEA option ($255) for 1 in economy; use the name and DOB on my profile; payment: apply my two certificates (if only one is allowed, use the larger one and put the remainder on my card ending 7447); add 3 checked bags; no travel insurance; and please check my profile for any free bag eligibility."
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"user_id\":\"mia_li_3668\"}",
+              "name": "get_user_details"
+            },
+            "id": "call_BbgWJ7XeDwz9oXkvwNe1cT0x",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "reasoning_content": "**Confirming booking details**\n\nI need to confirm all the necessary details before proceeding with the booking. I'll gather membership information, payment methods, certificates, and passenger info. The policy allows only one travel certificate, but the user has requested two. I\u2019ll use the largest one and apply the remainder to the credit card ending in 7447. I also need to check baggage allowances based on the user's membership tier and calculate any non-free bags. Finally, I\u2019ll gather flight details for the cheapest itinerary on May 20.**Confirming user details**\n\nI need to confirm that the departure is scheduled after 11 AM ET and ensure there are no nonstop flights. I also need to get explicit confirmation from the user, despite them initially saying yes, because policy requires a detailed summary. I\u2019ll present key action details such as flight information, date, cabin class, passenger data, baggage count, and expected fees. I must also retrieve the user's details before proceeding, so I\u2019ll call with the user ID to gather necessary information. Then, I'll present everything for confirmation.",
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": "**Confirming booking details**\n\nI need to confirm all the necessary details before proceeding with the booking. I'll gather membership information, payment methods, certificates, and passenger info. The policy allows only one travel certificate, but the user has requested two. I\u2019ll use the largest one and apply the remainder to the credit card ending in 7447. I also need to check baggage allowances based on the user's membership tier and calculate any non-free bags. Finally, I\u2019ll gather flight details for the cheapest itinerary on May 20.**Confirming user details**\n\nI need to confirm that the departure is scheduled after 11 AM ET and ensure there are no nonstop flights. I also need to get explicit confirmation from the user, despite them initially saying yes, because policy requires a detailed summary. I\u2019ll present key action details such as flight information, date, cabin class, passenger data, baggage count, and expected fees. I must also retrieve the user's details before proceeding, so I\u2019ll call with the user ID to gather necessary information. Then, I'll present everything for confirmation.",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Confirming booking details**\n\nI need to confirm all the necessary details before proceeding with the booking. I'll gather membership information, payment methods, certificates, and passenger info. The policy allows only one travel certificate, but the user has requested two. I\u2019ll use the largest one and apply the remainder to the credit card ending in 7447. I also need to check baggage allowances based on the user's membership tier and calculate any non-free bags. Finally, I\u2019ll gather flight details for the cheapest itinerary on May 20.**Confirming user details**\n\nI need to confirm that the departure is scheduled after 11 AM ET and ensure there are no nonstop flights. I also need to get explicit confirmation from the user, despite them initially saying yes, because policy requires a detailed summary. I\u2019ll present key action details such as flight information, date, cabin class, passenger data, baggage count, and expected fees. I must also retrieve the user's details before proceeding, so I\u2019ll call with the user ID to gather necessary information. Then, I'll present everything for confirmation.",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpzicDp0LO7j5CahgcgrDrr5UGj-ZyXip0sI_TwQ-07utKN0vLzDm0TyywNBuSSaxq17q8YmfW4uSfl3trNwC57YAqF5EfShvLtSWqGw3qcrlJqA7CM1yHzDk6RJutIwHtGafe-_-x5kpTf23P4g1Okhn8ZM4KSh9e5XlEL4CXBboR5mId1vwNixFRmpMKzYGpo2xbq2GzKYtVRUlCnCKJj7LIQiQEFcvOQO1OAtZe4ECwX53UOl2J8lcw1RU92EFRoiWgoEAAdOsXJU1CMhIyZ48jAiVX70PEIWXRB46PkwuaZS03_E0r80HFcb3onrxL1iMbcbtWnM3NDVAmXSDsBpd6p4fAT8479Cr6ZbLqxFp48kk6vXW_LIvyVlBI2tPGfHaf14IqRb9VrgPc03xcqXU5F8sbgRPvYd_vsoAfmcUkwCM-mS_hRHau0Bilkz0vA0EwCnp1OSIrKocfzhwpCG6dpXbleDRWGQ3kH1eaM5c7KRgyarsC4e2NN7j_amO-wpXowV5xHqE1QqpUjPqzRgM1LWFHXG0tKDsNL3sDn--3KQDMIA6NAqyzEX5ZtT3fmHlULOoMIe5b7zB2UxPR4xzMtAc3LiNuRvfXsu6TOsYst_gE4fWasJ3tzY5NyF8f2AunHtMaM8sgn4jwAAGtpY_xtoEd9TugvKCUYVj5iAebDLE5AJpr4dcC9nOrsE_hHEHo0fmV1vqu5T1FUEkze5SM3RSiIsewc5rMz__63j6tgmvkgf5wCJlK1Xz1INqK7p95NWM6LS3yZbkqOuW1nDnGdFL_inINUeK3cczAJj3Jq8kTvCpM60PJkA3ksQBLHneok-c77-P0H7KIPkyy0Rx8FwXYWMaxwOks51qyVt3Dgl1xRPmvBRgZjhVaCyOvVQBi2yDXotrhUClvL1jPpxnJeof-SUU1mJ6bKBxBdsW2iJnX4CIskrtBBaWdR_tJlzPTxPZSvVdLTkHS8gEcl4pEW8jdd0QK1AkdnYaKxMlVRIZqiLjcs7uV33AemX8J4YbPZLUtyYkVwT9CYm9K-nMAXLYh0hZTfKOIIXYtgL554VtqON8tseK6Yoavuh4j6g089nIGAyIq89IALdMtliMUf4yDH8EDGpLF2vLyWPnM-B8dkhfxcmFiKjgds83Mvk--8hPcOoLb6QQVva58zxlE1e7GuIpSRXt3VW94O6DWRCgSS5uFKmhdtbrIB4yAzcjWc2Im7eGsyHiObvrz6Zg7RS2N0-sRS4snZzMWbl2-kUPAxUlMru6cjr_P-qO0bZy0xj8RPKIbGkSbRGjB7Xh_yyK0MTyaCmZfqadRAnDoL9PRQCyFM0HfEZ3THfgjolq44jZVNgl2FwDL8iPsi2N_Jiq7p9tU8VH8cYEuj3GnI2neKtzRdg0RnbKTLqcRJjFFr4UbAmQ0DbzDPMDFu_1oz6UTnjuX-Cn52a8J6_w86NbDEzeBnSindzjdRkvaLx9GI23lAigHtoQ6I03bPlNBT8DWh-RBmJ9FB6sIszlrO4IRU7OQGa-BxT3IqMtUrn_wL5OAogfLkajVgAUSmFqrbNpAGe6Q4yFNuvueZbi-cvdw25QmqIfDbybpPYEG9BFmW6MbaCPZepRZ1P1g4Kwo1GapDBlcfTiYjP9fLW9Kmp27xRB4DkkKlM5kXeBVpz_pb6ynR_Cauui_vO9kP3mHuXzliktkyddT-RS5_puTp2KC9iGGZMiEm6w_paSunN015QdT1S-phLhd1b-6KcIGbnyc3YCw5vD498KMMwP12wk24hPJxI-tBoxYX-3Amgu2L7zAHjOaVg-drcUnwbGcXTrir0Rt-qUJWB9m9kSoUPnA1MXWuSBePoTHAxvNVWF0EicGA9AZS2ZzOMDPnAvQ72FKyupJRf_dwPReLGOuvPI5ULq6GlOQsM2Q4tU6g5slT6TJzu5XSd9fAzVYG7s0XLMl1HuiH9TgYiU49RrBgQ9FD2p7LEznL3LU_nwMzjlxzP7wyH_c_5mh44Y5GdWQhbHCYe29DH3rJLIfZZCQel0wi1sKYN8d9TmLJpFWByB-IOCj9JrXLxgq8403SxuuBgEcXzqO0bnYJc3eti1KwJKu3hPVafNqsbgjqsLWyVxI7xQch9mhcHe_zMgLuCjITny-fKLVQzEMQ1Z_O0xOgJqvW9ZZvgRfEA7Q-zSjtBnRXakAjX0XnCqnjSX2FUKPX6072OIKs6-gbfvkXwMRfLnug1YkwNqotDO2Q-ONuKKaoL0DlyS83nozlIFwLkJGZvoArW1K_QjcC60qrO3OJfZwb8cj1PvoWp72WBrhJtz1ERX9EQ12wFyONPoDeMUBc-5pnzB3tMppshwqxkjwPLqM5LM7R9U7th3S4uyOvzr8jlkdqvpHRTwy0qQrAtjtcXbiGFRrN-K2IBs8cTdxzdsqLb3ZSWBZxFU2v6NMa6AGqryVVbkTIEV3SNwHAZ-L_tgAUcEl7WlfipAOCegK7AVgt6sAosWlBbGboVeddu-a8wWWeAAakUC4fK4GCGFg34UFc2tADRDFuS7MOTkmOowsIkd_Jo0vQ3MjPJ9TdM10ovXvbiCXRGb8wHwrldar2PnzYd1ZwramR2XKKrfNWgJSBZkJCc1RUh1hgQCjJ7P4N25ygZFygLyroS4ouzYzxtRbNtHVlJNrnSvnquVmqKTDcg3x9P2Hru0f7H46JnXrACK70E8aWDSqj9vrUHu0aTITrAdPopBVroWLADyimEQP_btuJjtorfqTiXCJmn91zIu8H3Ok1S-6VpJEsODdgJ3Njwzq9vCAbV8ZBHTSPg47sH1LTHRKtFrvHKKQZSF6D30tIbOASLhmzYcpuVQgiW1zi3W-f6Bvl4QINEIMZjLBUftn4SHfrBKz3ZfUnHFcOPa6uCMmh7JNGrmgcyLP7RYCrSXo0piJjk-tg2sQxd53JOe9oCIxaU32I9MlCReIQYYouRoWZSH0sgMWafQFOvSHIPTz2YY_RSygGranM5tlCxHHZmrtO_ZoY38aIv91sV3uq3dKfnA0ocNM4BBJvFX-6xfmw4O_sO7WqlY1lrS41B6jOB7Pdto8B4hgnzF6OORG0B13NGp0B3SKC1DUJexSQRkXttwZ2hnKAsrOUe7tCBir46AWvHa3f0FPGo8Rzw9bjuNx2GuOTou1fccJPBYIGA-yAirxSKTgJzuxxSWLNY0S_kw3ktcv_DsiiYGN",
+              "format": "openai-responses-v1",
+              "id": "rs_0549d0a51dd8325a0169ce26fa08c88197abeb65cadd69465b",
+              "index": 1
+            }
+          ],
+          "reasoning_content": "**Confirming booking details**\n\nI need to confirm all the necessary details before proceeding with the booking. I'll gather membership information, payment methods, certificates, and passenger info. The policy allows only one travel certificate, but the user has requested two. I\u2019ll use the largest one and apply the remainder to the credit card ending in 7447. I also need to check baggage allowances based on the user's membership tier and calculate any non-free bags. Finally, I\u2019ll gather flight details for the cheapest itinerary on May 20.**Confirming user details**\n\nI need to confirm that the departure is scheduled after 11 AM ET and ensure there are no nonstop flights. I also need to get explicit confirmation from the user, despite them initially saying yes, because policy requires a detailed summary. I\u2019ll present key action details such as flight information, date, cabin class, passenger data, baggage count, and expected fees. I must also retrieve the user's details before proceeding, so I\u2019ll call with the user ID to gather necessary information. Then, I'll present everything for confirmation."
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_BbgWJ7XeDwz9oXkvwNe1cT0x",
+        "name": "get_user_details",
+        "content": "{\"name\": {\"first_name\": \"Mia\", \"last_name\": \"Li\"}, \"address\": {\"address1\": \"975 Sunset Drive\", \"address2\": \"Suite 217\", \"city\": \"Austin\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"78750\"}, \"email\": \"mia.li3818@example.com\", \"dob\": \"1990-04-05\", \"payment_methods\": {\"credit_card_4421486\": {\"source\": \"credit_card\", \"brand\": \"visa\", \"last_four\": \"7447\", \"id\": \"credit_card_4421486\"}, \"certificate_4856383\": {\"source\": \"certificate\", \"amount\": 100, \"id\": \"certificate_4856383\"}, \"certificate_7504069\": {\"source\": \"certificate\", \"amount\": 250, \"id\": \"certificate_7504069\"}, \"credit_card_1955700\": {\"source\": \"credit_card\", \"brand\": \"visa\", \"last_four\": \"1907\", \"id\": \"credit_card_1955700\"}}, \"saved_passengers\": [{\"first_name\": \"Amelia\", \"last_name\": \"Ahmed\", \"dob\": \"1957-03-21\"}], \"membership\": \"gold\", \"reservations\": [\"NO6JO3\", \"AIXC49\", \"HKEG34\"]}"
+      },
+      {
+        "content": "Before I book, please review and confirm the details:\n\nTraveler\n- Mia Li, DOB 1990-04-05 (from your profile)\n\nItinerary (one-way, economy)\n- Mon, May 20, 2024\n  - HAT136: JFK \u2192 ATL\n    - Departs 7:00 PM ET, Arrives 9:30 PM ET\n  - HAT039: ATL \u2192 SEA\n    - Departs 10:00 PM ET, Arrives 3:00 AM ET (+1, Tue May 21)\n\nPrice\n- Economy total: $255\n\nBaggage\n- 3 checked bags requested\n- Membership: Gold\n- Free allowance in economy for Gold: 3 bags\n- Extra bag fees: $0 (all 3 are free)\n\nInsurance\n- No travel insurance\n\nPayment\n- Apply 1 travel certificate (policy allows only one): certificate_7504069 for $250\n- Remaining $5 on credit card ending 7447 (credit_card_4421486)\n\nIf all of the above is correct, reply \u201cYes, confirm\u201d and I will proceed to book exactly as listed.",
+        "role": "assistant",
+        "tool_calls": null,
+        "function_call": null,
+        "reasoning_content": "**Confirming baggage and flight details**\n\nI have the user\u2019s membership details, which gives her certain baggage allowances. For gold members in economy, she can check in 3 bags for free. Since she's looking to add 3 checked bags, there are no additional fees.\n\nI also need to ensure her flight choices fit. She\u2019s looking at JFK to ATL at 19:00 and ATL to SEA at 22:00, which works. The total cost comes out to $255 in economy for one passenger, with no insurance.\n\nFor payment, I'll apply the larger travel certificate and will need her confirmation before finalizing the booking.**Summarizing booking details**\n\nThe user indicated they want to proceed with the booking, but I need to follow policy and confirm the details before finalizing. I\u2019ll summarize the itinerary, cabin class, price, payment methods, baggage, and insurance, making sure everything is clear.\n\nThe flight details include HAT136 and HAT039 on May 20, 2024, arriving at 03:00 on May 21. I\u2019ll verify the user's info using the profile name Mia Li, with a DOB of April 5, 1990.\n\nI'll clarify that we can only use one travel certificate, applying certificate_7504069 for $250 and charging $5 to the credit card. The total remains $255, with no insurance. I\u2019ll ask the user to confirm with a \"Yes\" to proceed.",
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": "**Confirming baggage and flight details**\n\nI have the user\u2019s membership details, which gives her certain baggage allowances. For gold members in economy, she can check in 3 bags for free. Since she's looking to add 3 checked bags, there are no additional fees.\n\nI also need to ensure her flight choices fit. She\u2019s looking at JFK to ATL at 19:00 and ATL to SEA at 22:00, which works. The total cost comes out to $255 in economy for one passenger, with no insurance.\n\nFor payment, I'll apply the larger travel certificate and will need her confirmation before finalizing the booking.**Summarizing booking details**\n\nThe user indicated they want to proceed with the booking, but I need to follow policy and confirm the details before finalizing. I\u2019ll summarize the itinerary, cabin class, price, payment methods, baggage, and insurance, making sure everything is clear.\n\nThe flight details include HAT136 and HAT039 on May 20, 2024, arriving at 03:00 on May 21. I\u2019ll verify the user's info using the profile name Mia Li, with a DOB of April 5, 1990.\n\nI'll clarify that we can only use one travel certificate, applying certificate_7504069 for $250 and charging $5 to the credit card. The total remains $255, with no insurance. I\u2019ll ask the user to confirm with a \"Yes\" to proceed.",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Confirming baggage and flight details**\n\nI have the user\u2019s membership details, which gives her certain baggage allowances. For gold members in economy, she can check in 3 bags for free. Since she's looking to add 3 checked bags, there are no additional fees.\n\nI also need to ensure her flight choices fit. She\u2019s looking at JFK to ATL at 19:00 and ATL to SEA at 22:00, which works. The total cost comes out to $255 in economy for one passenger, with no insurance.\n\nFor payment, I'll apply the larger travel certificate and will need her confirmation before finalizing the booking.**Summarizing booking details**\n\nThe user indicated they want to proceed with the booking, but I need to follow policy and confirm the details before finalizing. I\u2019ll summarize the itinerary, cabin class, price, payment methods, baggage, and insurance, making sure everything is clear.\n\nThe flight details include HAT136 and HAT039 on May 20, 2024, arriving at 03:00 on May 21. I\u2019ll verify the user's info using the profile name Mia Li, with a DOB of April 5, 1990.\n\nI'll clarify that we can only use one travel certificate, applying certificate_7504069 for $250 and charging $5 to the credit card. The total remains $255, with no insurance. I\u2019ll ask the user to confirm with a \"Yes\" to proceed.",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpzicQfgO7CXGk_7j346pKOL3Y3HZQo1HH-rSlbqPKqLwEGDVFeLygxBaq4LKVxNLzGjL5QJ5V5pQkAXbNMG2J3qW97VjnSQ9V6loJEy0QWHg6W-jr2uEDUjOEkBApaF9-_V9UHBCi5uCFFL3_ac9bMBdV7JoLlgHDj7Yy-PQk9FQw1rxYGDnDJ7VJM8VYDOISRjrQtFxbKq2asVHlFRqU6x4Kwa_WMIOLDL2fb0PhE4BVOJzFXe-Q09BDrFMDuqBls9USDluC7ZtT5BNTEwWEB_5rIMJR-QZip0lAf6YKHa-Lxh7y7HaqDgrySjSPQtwfhFQDq8WJc0hCuV8r0dhieu-keLy_aF5RB91hi1JXOxa_GyXzXqfUcG1U7ZmCp_tCQwjFhIt5xOB1AHsdDDNWFRSCOsxefzjzkNNlq7GcZLt6E2XHXxg1-e_ZlKVdTgRi5kYvL-IXZlWhK7mJoSDOCQUXn0z10N8jhSxuTIc69asJiZNUBN9Im1Zu9qoIh7YevBMlk98smSfWtV0NpahQF9FynxTGhEU6Pi-3lOqwwayU5_cR4vJKBf9wYf80ZibFWKrA5Jl_eq2w8QsFYLf5uEPQC5NGmc3Lfq9GQhrX5lGOpAfnKaFENGAEfNO4oVT8pYBn_p9A61dseYFmg2itViqIlfcYPebhm8wFqZAO6aVS4StoHp1ZOWws1xGxO922Mqv9b3kTRZnJ81gIsm0h6H1iv64FMi0x04semdR3J4TwQm8FqyC9T4mHZ9_tieJUyZIG1KlzaJH5gBaWXel0E5sU9JPUR_r-wjySmN24YKrpLm62fiC4tdpdt50skwQdngjVpeiS6IWfcqjI_gjPhc5HKYUGkViNA_v0OFzcVOTqnzwgrgzfkCsdKfAkoZOBMhePJFnNupmwRw8ZhQb6C9O32EwinP9m1DBwgmui6SFaRrTsw_E8O_jxRemxIaElsyx10AQGQgTgZmAFpI8-WTQXavEmFtjraZCFH10HuBK1Mxb6SDpa-TWVRCSjnyF1OPuJf8cxbUAOcdxFxQaZ4WLY1QJ_1a9SiP_8xGPKz3g6kl1wFhVyw0jfUiCwXW5j-jMrIax22lj2HXcGPSV--kiIpzEemQupiYhcTnhMyU7lAsYCAS6_KJR2KIudhS0c1-zBcFsT6YH465A2ci8Cmo9vWaFtdsmOfG5QVkHXx1Lekq-xCFDkHyY36QxTeewzD9X5Bw5N-gS6osBbEJHzKZpzYRpGltLWpth82AncfdjRW0SQVtHOiLL565kujoVc28HofaA5ZutO6O_eELynFuPR6_6IKPUQRxGUrmYZe7Hw30b8D319j45Ts30VRYOB8DtrTLRM9ptfOQchGdoMR9T8zU8ym9Si9NtKx1P4mapGBk1P146APOwvvU3CMK5dRTSWzFQsvSgKWf8PI061BQ7blYPAydb7onHWkZXloDgKQPYyYrixFHhlW7RB3dKYmFQtYds1fVF12U3n6Z9tCpd5fYEfePHUJCBK3uep1f3qcss0BNx4efzM1pmijhTgTqQHW8GprSdCuhn59XHeGAwYHLdlv1ZJFzPZet4vByh90MdEb72k0yKhUqHF4HDzCaCutc7auQIWXrQT-AqX0vKGBn1KAhd-6WpVYxuw_fYmj-uvb1uUxo8_fKvVcQBfXSnx4TNTcGwwcGrL9BLd-mzZynvkxkRAkjH5s12osfhuEGcCZGgzWwdXPdl_zgrJ6Wg1DISufwjMwsBNyMbiTADhf5TXUmEvYLqSLSjQ_FNLUXCkQmkBbPWuH7zKBVuTQcd92gnf1K1NUg0RQF6d04gRh-jUs8H9nHtMf1B8tpUkTOxnH4V4AhAO8ohWzpEv-dZGZ1JhuRT-8NTNxRuVMaPLFppd5NcZFhMRmFvr6jDhmf8o95w9aNJ75Yq8BeifPygp-AFQkK5praq-OyZqb1tK9Az_M3am2B_HdjJky1EvAAo9TJKIgU5hgk-B9PyfvCW8S4c7xMKhhGPNWlpFxlEtUpCsEUB9C1EON84oHfLtITJ6G6LSOgH5f_pUtx3m0zqWPcYZNCFyhbyeyIcKqX457BtEAQLnvH345mJQBvLqlnv97Z86Hfi3WH6ygTz_1OQ3GpKQPyPdBo2t3tGp_0Ajd75J-C6NGvRrBmal0i5YYWYx_Eo0l_MCIG7_rn02MLF0YXy3mGrDtN8Ot_qtLn8Hkv05G4wpaHCJMoVDMd28fABxTP52lw6lskya-VS4O19w38HfIIUUVNtJnaXJdB9z0H3KF6g_pCMxcBrlSzQnrE4JMEdvZrrroSKz1JV71ztACAcJqXRpWpaLX2UL974sxEzZNeIAZlmxgj3LBZNQbbcmOYeqPmNY0HSPIDgNuafrnEgD0BM5N7OaQKnel2v_ONgqAGcz9bGfrYS_IwdDb_HIhE72iYTtNMN-BRbxIJcJdz9DUnZFypFzTtZBm5tlVIeehgNQyu-lm5rqgg5LoLqI-t1gbIiqK2qlGupUXO_sgKbQryXBVECKIG39-o2ZiHt4K3DnWBAK3IGxMlawcM6gyoHkos046KEMTQOylgGWAErNTvUPT5gmTtC8xX2TYX3ZV--Wd7Oi0TKcS86-Ut850Tr96Z5oTgbb2iDT2BNjuf8C6wsp6tuDdzE3-m3xRDVMsKE8Q2_SMH7mpH2yK-oz6mxjuN-waOev7jM5X2aMLQVP5A0WcPNBLbo-aC10aNeU3zKEF5FMHemJ2LD8_xzq2D8VuAiKeDI5l1xucyVdOiBApLsVSd35UaVpZwhQkz7HfY8MF84TLz_Mcr3PZ0RWUt9BFgs6dgV5bfZkPXGIrekicrw8Kp5zFvwqn_9sCKcZT0F9M_SvQ0LZUw1RFu2rrbTBYPmeeJvbuQvF0QV_XmO6ptTl1DOhBQUBGnwX1psUTv06rYsApzB1a7Q0GoesWDfjjgBGEAzRA4IZdbiYN6Kbngto2c-0AjZAnn10Ah6Kqy3rIIN8cwpjhcua8S9DWX9MSLjo7Gvdo2lmuFfiEnN8FTr1hun_f5d49WL16TKUwff8pf0iagp_BAb6DpOA5Ahev1NonszpWVu4GACcugD-6Yb_rVIJAOCRLLLGVsqxtd1nSSTZA2zEqdu1ViVpt8aauV0jB7Gv6CVET0_UhbOpq2ojdpKPQ46bIwrRjbTgbpPKElKyU9V-XFiUpg7N3VuO2DZnOkOrxYPLczd6K1ig1omXynQcBwAelbXEMJrKVL3aJYeT-F3Gnrn-8yl8RgME4C5OdmPMiNuFqt1p",
+              "format": "openai-responses-v1",
+              "id": "rs_0891e24d078ba5da0169ce2705f1d88194aab080f33c6e6f0f",
+              "index": 1
+            }
+          ],
+          "reasoning_content": "**Confirming baggage and flight details**\n\nI have the user\u2019s membership details, which gives her certain baggage allowances. For gold members in economy, she can check in 3 bags for free. Since she's looking to add 3 checked bags, there are no additional fees.\n\nI also need to ensure her flight choices fit. She\u2019s looking at JFK to ATL at 19:00 and ATL to SEA at 22:00, which works. The total cost comes out to $255 in economy for one passenger, with no insurance.\n\nFor payment, I'll apply the larger travel certificate and will need her confirmation before finalizing the booking.**Summarizing booking details**\n\nThe user indicated they want to proceed with the booking, but I need to follow policy and confirm the details before finalizing. I\u2019ll summarize the itinerary, cabin class, price, payment methods, baggage, and insurance, making sure everything is clear.\n\nThe flight details include HAT136 and HAT039 on May 20, 2024, arriving at 03:00 on May 21. I\u2019ll verify the user's info using the profile name Mia Li, with a DOB of April 5, 1990.\n\nI'll clarify that we can only use one travel certificate, applying certificate_7504069 for $250 and charging $5 to the credit card. The total remains $255, with no insurance. I\u2019ll ask the user to confirm with a \"Yes\" to proceed."
+        }
+      },
+      {
+        "role": "user",
+        "content": "Yes, confirm"
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"user_id\":\"mia_li_3668\",\"origin\":\"JFK\",\"destination\":\"SEA\",\"flight_type\":\"one_way\",\"cabin\":\"economy\",\"flights\":[{\"flight_number\":\"HAT136\",\"date\":\"2024-05-20\"},{\"flight_number\":\"HAT039\",\"date\":\"2024-05-20\"}],\"passengers\":[{\"first_name\":\"Mia\",\"last_name\":\"Li\",\"dob\":\"1990-04-05\"}],\"payment_methods\":[{\"payment_id\":\"certificate_7504069\",\"amount\":250},{\"payment_id\":\"credit_card_4421486\",\"amount\":5}],\"total_baggages\":3,\"nonfree_baggages\":0,\"insurance\":\"no\"}",
+              "name": "book_reservation"
+            },
+            "id": "call_pAUTX5saeqBewtpsYKVPI7QB",
+            "type": "function"
+          }
+        ],
+        "function_call": null,
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": null,
+          "reasoning_details": [
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABpzicesXYuax8MgW0ZpAH6VLMr_L01tab4PYvQvaesU5IWkK7A4fPXZAcozuM9Q4A73rCV872ZkTtU23pxalt2dqwm4Z6KX7sNVo-RWiEwAcopNrj-RNJO16bmrSM9WsTErUzklkX4owsV3j1HE4LRk4OFb5uBpc-a7cwa8elA9EJOFjTDFVFQ1CYaFVFc-T3d5_SRHwpmwu5FoYNngKNBbRXhbdSHrR_ako2COwITfBDBSZ4X56mLFIkk7itVPVAAg_vsAfz6koUY6gpPjpp7OB-bLFGtYOkgx3qdo5oKPxPjUhOzNhuYYVzpPzSs7H8qHTFdkQoVbRrviXOYbv4cGg_6e46Z6qSfeZn-vUTkkslojCDFCHLknRP5WdpWdqtRzmQnUvtlU6MYEaJUTbyFFY2zNM6JcTveXpcoONFMlerBwFEWusfFN0x33bf7HBRSxAAAnl-yfXPTQLcFlriG-L66TE22Hfbw-qeF-xQC9RVHqMWxq4uB9MSb4BJiVPU_nPVMRxpj170fxtesPsOfrxSmSfkF9RNLkLbTl480Y5CHzCQJ_ShMPVmjJ_hySjvlEUmFptsNzgyuuSUd-x_8MTQMLU5H221ErwqEp2ru0cjovnaEzxO0Hp-k8Rr1K32CqXeFaog-7_kfUApCglWzFRekr1cc52lO9XC_Vsh5y9Lt9BOHfkfT3ZVf-3-LT3LZ_pJFKSE1zufrBOXJaEfYKUMoKOA69Nh0pZQulhb5QlcsuPyuWPM0tgrg4w_zQ8wzZXSbl4kNbkxvvtCNK_Xlz-YVBYLyi3GsK9u531BZiGl6ZP4a0oIx0_CJMXGOehuZB1sUOWA4VPJkn6wDdNOV6iyikfBzKlhk2aELltVCuHOVjs2-oJht4CvZO1xth_Lz-o8nodklJqnIEL2jTITdDIc1lqkeAXqVZ4qobwKOSgMWUd7vBp0ZgacFWBazjTUJ8HHwhqZLV41yJhPjq22wzMFU_Y0eRTc7CXcgT9arJf-aPuOQoIkEJlP8ugqq_Gu5kUCDp7wKAGF30nMZp-VC76UlRsOsdQANmtATtNNZBJpIcJ3BXc7HMt-QQQ3mvzwht0R1nSElXXrT19Of79bJSccjVlf1_hJOyIrBxxK_7ryPIvLmZ6jEWVvTDjf11I7GUPoB2hGSP7rtLE1Kbj62wYIY-OQ7c4SYYedTQte2-KppZbpTh9wGUiJLmhtr9w2OGNnWTFZhCMZJLq-4MR_8UXk0dNI1Pw0Mwl34od3shZoZydQudxla7VcamrP_GkqsVU9fxABJ5NZPHgIAX032l0FvCkHj4-04wjwVmT4fyE6Q7DIp6WE0Mh6lNCY-K_HT7R3EYcd25Rq5q8QNvvi_ZHhQ-zc7eql0VQ8kYMmg_z02QS1w__-4k4hScTmyjyv_msR_r8aKn-COQtOasCNqdD429Qu1rmdehef0rf8bHHKjNfsQUtnCtdNu271yNm6LruiHe4PESPNu8PSWiXB7O_DGzCZPxBq6SFhBz1O3rHEfTzKZ94I_tvL9xRwxad4N08XlJYBvNeYrA7ME3bUtOHFrctA0ETbAWgaDLGpcrjPzhu4H4U7zdLSkYHVD_T-PiW2sE8d39NyIuZOtTF_G6KYvwhQQ-rAiqoZ1yMg3CEhBI8YHMZRTFaOB-y3u7BSKow8zU6xxI3S8Qn6wF_MwWgsY7oOlnirvVyC6H_fQ9IktmuRyEiVXrlIqu0OtvxLPBIwS9fhQtjvBDt9OFFADXnDUXLj4r7FN1Zhat-N1qzF_Z6w_dvjDZMf22SL8cDiyZ4AnifsLUqfNs7VKUikEn0tNFxzfvkQ9c6m7M5nzm1J5UFDMQGSgi_UuhXgsV4Mav4V_fFwMeM-owpUq720PQA9Wgg==",
+              "format": "openai-responses-v1",
+              "id": "rs_08aaa51d39dbb8500169ce271c3b748190a1e916837065cec1",
+              "index": 0
+            }
+          ]
+        }
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_pAUTX5saeqBewtpsYKVPI7QB",
+        "name": "book_reservation",
+        "content": "{\"reservation_id\": \"HATHAT\", \"user_id\": \"mia_li_3668\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT136\", \"date\": \"2024-05-20\", \"price\": 152, \"origin\": \"JFK\", \"destination\": \"ATL\"}, {\"flight_number\": \"HAT039\", \"date\": \"2024-05-20\", \"price\": 103, \"origin\": \"ATL\", \"destination\": \"SEA\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Li\", \"dob\": \"1990-04-05\"}], \"payment_history\": [{\"payment_id\": \"certificate_7504069\", \"amount\": 250}, {\"payment_id\": \"credit_card_4421486\", \"amount\": 5}], \"created_at\": \"2024-05-15T15:00:00\", \"total_baggages\": 3, \"nonfree_baggages\": 0, \"insurance\": \"no\"}"
+      },
+      {
+        "content": "Your reservation is confirmed. Here are the details:\n\nReservation ID\n- HATHAT\n\nTraveler\n- Mia Li, DOB 1990-04-05\n\nItinerary (one-way, economy)\n- Mon, May 20, 2024\n  - HAT136: JFK \u2192 ATL \u2014 Departs 7:00 PM ET, Arrives 9:30 PM ET\n  - HAT039: ATL \u2192 SEA \u2014 Departs 10:00 PM ET, Arrives 3:00 AM ET (+1, Tue May 21)\n\nPrice and payment\n- Fare: $255 total\n- Payments:\n  - Certificate applied: certificate_7504069 \u2014 $250\n  - Credit card ending 7447 \u2014 $5\n- Refund policy: Standard economy rules apply; no insurance added.\n\nBaggage\n- 3 checked bags added\n- Membership: Gold\n- Free allowance in economy (Gold): 3 bags\n- Extra bag fees: $0\n\nAnything else you\u2019d like to add or change?",
+        "role": "assistant",
+        "tool_calls": null,
+        "function_call": null,
+        "provider_specific_fields": {
+          "refusal": null,
+          "reasoning": null
+        }
+      },
+      {
+        "role": "user",
+        "content": "###STOP###"
+      }
+    ],
+    "trial": 0
+  }
+]
