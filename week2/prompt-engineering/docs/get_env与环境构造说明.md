@@ -211,4 +211,5 @@ B: AblationAgent.solve(C)
 ## 10. 相关文档
 
 - `docs/run_ablation-parse_args.md`：`run_ablation.py` 参数与双角色说明
+- `docs/ablation_agent实现说明.md`：`AblationAgent` 的 `solve` 循环、`messages` 维护与 `verbose` 日志
 - `docs/tau_bench-user-py说明.md`：用户模拟器（`user.py`）详解
