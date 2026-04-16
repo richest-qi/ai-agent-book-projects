@@ -10,7 +10,43 @@ import logging
 import argparse
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
+
 from agent import SystemHintAgent, SystemHintConfig, TodoStatus
+
+_ENV_PATH = Path(__file__).resolve().parent / ".env"
+
+
+def _load_local_env() -> None:
+    """从与本脚本同目录的 .env 加载环境变量（不覆盖已在 shell 中设置的变量）。"""
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(_ENV_PATH)
+    except ImportError:
+        if not _ENV_PATH.is_file():
+            return
+        try:
+            for raw in _ENV_PATH.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key, val = key.strip(), val.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+        except OSError:
+            pass
+
+
+_load_local_env()
+
+# env.example 中的占位符，视为未配置（避免误用假密钥调用 API）
+_PLACEHOLDER_API_KEYS = frozenset(
+    {"your-kimi-api-key-here", "your-api-key-here", "changeme", "replace-me"}
+)
 
 # Configure logging
 logging.basicConfig(
@@ -18,6 +54,27 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def get_kimi_api_key() -> Optional[str]:
+    """优先使用环境变量中的 KIMI_API_KEY（含已从 .env 加载的值）。"""
+    key = os.getenv("KIMI_API_KEY")
+    if not key or not key.strip():
+        return None
+    key = key.strip()
+    if key.lower() in {p.lower() for p in _PLACEHOLDER_API_KEYS}:
+        return None
+    return key
+
+
+def print_missing_api_key_help():
+    env_hint = str(_ENV_PATH)
+    print("❌ Error: 未配置有效的 KIMI_API_KEY")
+    print("   任选其一：")
+    print(f"   1) 编辑本目录 .env：KIMI_API_KEY=<你的密钥>（路径: {env_hint}）")
+    print("   2) 复制 env.example 为 .env 后，把占位符换成真实密钥")
+    print("   3) 或在 shell 中: set KIMI_API_KEY=你的密钥  (PowerShell: $env:KIMI_API_KEY='...')")
+    print("   若未安装依赖，请执行: pip install -r requirements.txt")
 
 
 def print_section(title: str):
@@ -92,10 +149,9 @@ def get_sample_task() -> str:
 
 def execute_single_task(task: str, config: SystemHintConfig = None, verbose: bool = False):
     """Execute a single task with the agent"""
-    api_key = os.getenv("KIMI_API_KEY")
+    api_key = get_kimi_api_key()
     if not api_key:
-        print("❌ Error: Please set KIMI_API_KEY environment variable")
-        print("   export KIMI_API_KEY='your-api-key-here'")
+        print_missing_api_key_help()
         return None
     
     if config is None:
@@ -128,10 +184,9 @@ def interactive_mode():
     """Run the agent in interactive mode"""
     print_section("Interactive Mode - System-Hint Agent")
     
-    api_key = os.getenv("KIMI_API_KEY")
+    api_key = get_kimi_api_key()
     if not api_key:
-        print("❌ Error: Please set KIMI_API_KEY environment variable")
-        print("   export KIMI_API_KEY='your-api-key-here'")
+        print_missing_api_key_help()
         return
     
     # Initialize agent with full features
@@ -214,9 +269,9 @@ def demo_basic_features():
     """Demonstrate basic system hint features"""
     print_section("Demo: Basic System Hint Features")
     
-    api_key = os.getenv("KIMI_API_KEY")
+    api_key = get_kimi_api_key()
     if not api_key:
-        print("❌ Please set KIMI_API_KEY environment variable")
+        print_missing_api_key_help()
         return
     
     config = SystemHintConfig(
@@ -250,9 +305,9 @@ def demo_tool_loop_prevention():
     """Demonstrate tool call loop prevention"""
     print_section("Demo: Tool Call Loop Prevention")
     
-    api_key = os.getenv("KIMI_API_KEY")
+    api_key = get_kimi_api_key()
     if not api_key:
-        print("❌ Please set KIMI_API_KEY environment variable")
+        print_missing_api_key_help()
         return
     
     config = SystemHintConfig(
@@ -287,9 +342,9 @@ def demo_comparison():
     """Compare with and without system hints"""
     print_section("Demo: System Hints Comparison")
     
-    api_key = os.getenv("KIMI_API_KEY")
+    api_key = get_kimi_api_key()
     if not api_key:
-        print("❌ Please set KIMI_API_KEY environment variable")
+        print_missing_api_key_help()
         return
     
     task = """Create a simple Python script that prints 'Hello World' and save it as 'hello.py'."""
