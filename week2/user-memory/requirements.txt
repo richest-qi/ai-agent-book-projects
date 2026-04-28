@@ -3,6 +3,7 @@
 # Core dependencies
 openai>=1.35.0
 python-dotenv>=1.0.0
+tenacity>=8.0
 
 # Logging and utilities
 colorama>=0.4.6
