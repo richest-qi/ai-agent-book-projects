@@ -1,143 +1,197 @@
 # User Memory 评测执行与模型调用流程说明
 
-本文档补充说明 Evaluation Mode 中这几个常见疑问：
+本文档用于统一说明 Evaluation Mode 的核心逻辑，重点回答以下问题：
 
-- 为什么会同时出现 `agent.memory_manager`、`agent.conversation_history`、`processor.memory_manager`、`processor.conversation_history`
-- 选择 test case 后，清空 history 之后，究竟从哪里开始调用大模型
-- 为什么会出现两次“清空历史”
+- 为什么会同时看到 `agent.*` 与 `processor.*` 两套对象
+- 选择测试用例后，模型调用从哪里开始，调用几次
+- 为什么会有两次“清空历史”
+- `memory_mode` 如何影响记忆提取方式与落盘结构
+- 为什么会出现“conversations 有数据但 memories 为空/偏少”
 
-## 1. 四个对象分别是什么
+## 1. 总览：这是一个“双阶段”评测流程
 
-在 `week2/user-memory/main.py` 的 `run_evaluation_mode(...)` 中，会同时初始化两个核心组件：
+Evaluation Mode 的设计目标是：  
+**先抽取记忆，再基于记忆回答问题**。
+
+完整路径如下：
+
+1. 加载并回放测试对话（历史对话上下文）
+2. 由 `processor` 触发记忆提取（第一次模型调用）
+3. 清理原始对话痕迹，重新加载记忆
+4. 由 `agent` 基于结构化记忆回答问题（第二次模型调用）
+5. 将回答交给评测器打分
+
+因此，这不是一次模型调用完成全部任务，而是“抽取”和“问答”解耦的两次调用。
+
+## 2. 组件分工与对象关系
+
+在 `run_evaluation_mode(...)` 中，会初始化两类核心组件：
 
 - `agent = ConversationalAgent(...)`
 - `processor = BackgroundMemoryProcessor(...)`
 
-因此会看到两套状态对象：
+它们分别负责不同职责：
 
-- `agent.memory_manager`
-- `agent.conversation_history`
-- `processor.memory_manager`
-- `processor.conversation_history`
+- `processor`：从 USER/ASSISTANT 对话中提取记忆，并写入 memory 文件
+- `agent`：读取 memory 文件中的结构化记忆，生成最终回答
 
-它们不是重复，而是职责分离：
+### 2.1 调试视角的结构树
 
-- `processor` 负责“从对话中抽取并写入结构化记忆”
-- `agent` 负责“读取结构化记忆并回答最终问题”
+- `agent = ConversationalAgent(...)`
+  - `memory_manager`
+  - `conversation_history`
+  - `conversation`
+    - `{role: "system", content: system prompt}`
+      - system prompt 形如：`"You are a helpful and personalized assistant..."`
 
-## 2. 选择 test case 后的主流程
+- `processor = BackgroundMemoryProcessor(...)`
+  - `memory_manager`
+  - `conversation_history`
+  - `analysis_agent = UserMemoryAgent(...)`
+    - `memory_manager`
+    - `conversation_history`（在该场景下默认关闭）
+    - `tool_calls`
+    - `conversation`
+      - `{role: "system", content: system prompt}`
+        - system prompt = `base prompt + memory_instructions`
+          - `base prompt`: `"You are an intelligent assistant with persistent memory across conversations..."`
+          - `memory_instructions` 会随 `MemoryMode` 变化
 
-当你在菜单中输入 test id（例如 `layer1_01_bank_account`）后，核心流程如下：
+## 3. 测试用例执行主流程（顺序版）
 
-1. 清空两侧 memory 和 conversation（确保本轮测试干净）
-2. 把 test case 里的 `conversation_histories` 组装成 `conversation_contexts`
-3. 调用 `processor.process_conversation_batch(conversation_contexts)` 做记忆提取
-4. 再次清空 `agent` 的原始对话历史（模拟新会话）
-5. `agent.memory_manager.load_memory()` 从文件重新加载处理后的记忆
-6. 调用 `agent.chat(test_case.user_question)` 回答用户问题
-7. 将回答交给评测框架打分
+当选择某个 test case（如 `layer1_01_bank_account`）后，主流程可按时间顺序理解为：
 
-## 3. 清空 history 后，哪里开始调用大模型
+1. 清空两侧状态（memory 与 conversation）  
+   目的是保证当前测试不受上一轮污染。
 
-### 3.1 记忆提取阶段（第一次模型主调用链）
+2. 将 test case 的 `conversation_histories` 组装为 `conversation_contexts`  
+   作为待提取记忆的输入材料。
 
-入口在 `main.py`：
+3. 调用 `processor.process_conversation_batch(conversation_contexts)`  
+   进入“记忆提取阶段”。
+
+4. 再次清空 `agent` 的原始对话痕迹  
+   模拟新会话，避免直接利用原始文本作答。
+
+5. 调用 `agent.memory_manager.load_memory()`  
+   从文件加载已提取的结构化记忆。
+
+6. 调用 `agent.chat(test_case.user_question)`  
+   进入“基于记忆回答阶段”。
+
+7. 评测器对最终回答打分并记录结果。
+
+## 4. 模型调用链：两次调用分别发生在哪里
+
+### 4.1 记忆提取阶段（第一次主调用）
+
+入口：
 
 - `processor.process_conversation_batch(conversation_contexts)`
 
-进入 `background_memory_processor.py` 后调用链：
+调用链：
 
 - `process_conversation_batch(...)`
 - `analyze_conversation(...)`
 - `self.analysis_agent.execute_task(task)`
 - `agent.py` 中 `execute_task(...)`
-- `self.client.chat.completions.create(..., stream=True)`  ← 这里真正请求模型
+- `self.client.chat.completions.create(..., stream=True)`（真正请求模型）
 
-这一阶段模型会产出工具调用（`add_memory/update_memory/delete_memory`），并把记忆写到 memory 文件中。
+该阶段输出的不是“最终用户答案”，而是工具调用：
 
-### 3.2 问答阶段（第二次模型主调用链）
+- `add_memory`
+- `update_memory`
+- `delete_memory`
 
-入口在 `main.py`：
+工具执行成功后，记忆会写入 memory 文件。
+
+### 4.2 问答阶段（第二次主调用）
+
+入口：
 
 - `response = agent.chat(test_case.user_question)`
 
-进入 `conversational_agent.py` 后调用链：
+调用链：
 
 - `chat(...)`
-- `self.client.chat.completions.create(..., stream=True)`  ← 再次请求模型
+- `self.client.chat.completions.create(..., stream=True)`（再次请求模型）
 
-这一阶段模型基于“已保存并重新加载的结构化记忆”来回答测试问题。
+该阶段模型基于“已抽取并重新加载的记忆”回答用户问题。
 
-## 4. 为什么会有两次“清空历史”
+## 5. 为什么会出现两次“清空历史”
 
-这是一种刻意的评测设计：
+两次清空是刻意设计，不是冗余操作：
 
-1. **测试前清空**：防止上一轮测试污染当前测试
-2. **记忆抽取后再次清空**：模拟“新会话”场景，避免模型直接利用原始对话文本；要求它只能依赖结构化记忆进行回答
+1. **测试前清空**：隔离不同 test case，防止互相污染。
+2. **抽取后再次清空**：强制进入“新会话”语境，避免模型直接读取原始对话内容，确保回答确实依赖结构化记忆。
 
-所以你会在日志中看到两类提示都出现，这属于预期行为。
+这正是评测公平性的关键机制之一。
 
-## 5. conversations 文件有数据，但 memories 可能为空的原因
+## 6. memory_mode 如何决定提取与存储
 
-两者写入链路不同：
+同一个 `memory_mode` 同时影响两层逻辑，但影响方向不同：
 
-- `data/conversations/default_user_history.json`：在组装/回放对话时就会逐轮写入
-- `data/memories/default_user_memory.json`：依赖“记忆提取阶段”的模型调用和工具调用成功执行
+- 对 `analysis_agent`：决定“提取提示词怎么写”（语义抽取策略）
+- 对 `memory_manager`：决定“记忆按什么结构存储”（数据结构与更新规则）
 
-如果记忆提取阶段发生流式中断、工具参数截断、请求失败等异常，就可能出现“conversations 有数据，但 memories 为空或很少”的现象。
+### 6.1 提取策略：analysis_agent 的 system prompt 会变化
 
-## 6. 一句话总结
+`analysis_agent`（`UserMemoryAgent`）的 system prompt 由：
 
-Evaluation Mode 是“先让 `processor` 调模型提取记忆，再让 `agent` 调模型回答问题”的双阶段流程；  
-两次清空历史是为了保证评测公平，确保最终回答依赖的是结构化记忆而不是原始对话缓存。
+- `base_prompt`
+- `memory_instructions`
 
-## 7. memory_mode 如何决定“怎么提取记忆”
+组成。`memory_instructions` 按模式变化：
 
-在这套实现里，**记忆提取策略**和**记忆存储结构**是两层职责：
+- `NOTES`：偏简洁事实/偏好
+- `ENHANCED_NOTES`：偏完整上下文段落
+- `JSON_CARDS`：要求 `category -> subcategory -> key -> value`
+- `ADVANCED_JSON_CARDS`：要求完整 card 对象（如 `backstory/person/relationship/...`）
 
-- `analysis_agent`（`UserMemoryAgent`）负责“怎么从对话里抽取”
-- `memory_manager` 负责“抽取结果按什么结构落盘、更新、删除、读取”
+因此，同一段对话在不同模式下会被抽取成不同形态。
 
-换句话说：你看到的 `NOTES | ENHANCED_NOTES | JSON_CARDS | ADVANCED_JSON_CARDS`，本质上由同一个 `memory_mode` 同时驱动这两层，但两层关注点不同。
+### 6.2 存储策略：memory_manager 工厂映射
 
-### 7.1 谁在决定提取方式
-
-在 `main.py` 初始化 `BackgroundMemoryProcessor(...)` 时传入 `memory_mode` 后：
-
-1. `BackgroundMemoryProcessor` 会用该 `memory_mode` 初始化 `analysis_agent`
-2. 也会用同一个 `memory_mode` 初始化 `memory_manager`
-
-因此，“提取成什么风格”与“最后存成什么格式”是联动的。
-
-### 7.2 analysis_agent 的 system prompt 是否不同
-
-**是的，不同，而且这是提取差异的核心来源。**
-
-`agent.py` 中 `_init_system_prompt()` 会按 `memory_mode` 选择不同的 memory instructions：
-
-- `NOTES`：强调记录简洁事实/偏好
-- `ENHANCED_NOTES`：强调完整上下文段落（不是短 key-value）
-- `JSON_CARDS`：强调 `category -> subcategory -> key -> value` 的分层结构
-- `ADVANCED_JSON_CARDS`：强调完整 card 对象（如 `backstory/person/relationship/...`）
-
-所以同一段 USER/ASSISTANT 对话，在不同模式下会被引导成不同形态的记忆。
-
-### 7.3 memory_manager 在做什么
-
-`memory_manager.py` 的工厂函数 `create_memory_manager(...)` 会根据 `memory_mode` 选实现：
+`create_memory_manager(...)` 的模式映射为：
 
 - `NOTES` / `ENHANCED_NOTES` -> `NotesMemoryManager`
 - `JSON_CARDS` -> `JSONMemoryManager`
 - `ADVANCED_JSON_CARDS` -> `AdvancedJSONMemoryManager`
 
-这说明：
+关键结论：
 
-- `NOTES` 与 `ENHANCED_NOTES` 的**存储层是同一个**（差异主要在 prompt 和抽取表达风格）
-- 两种 JSON 模式分别对应不同的卡片结构与更新规则
+- `NOTES` 与 `ENHANCED_NOTES` 的底层存储是同一个 manager  
+  （差异主要来自提示词和提取表达风格）
+- 两种 JSON 模式对应不同的数据结构与更新规则
 
-### 7.4 一个实现注意点
+## 7. 常见异常：为什么 conversations 有数据，但 memories 为空
 
-当前工具描述里 `add_memory/update_memory` 的 `content` 参数偏向字符串描述；  
-但 JSON 模式提示词要求结构化 JSON。运行时通常依赖模型输出可解析的 JSON（或 JSON 字符串）并在工具层解析。  
-因此当流式输出中断、参数截断或 JSON 不完整时，更容易出现“对话有了，但 memories 落盘失败或偏少”的现象。
+根因通常在于两条写入链路本身不同：
+
+- `data/conversations/default_user_history.json`  
+  在对话回放/记录阶段就会写入。
+
+- `data/memories/default_user_memory.json`  
+  依赖“记忆提取阶段”的模型调用和工具调用成功。
+
+因此，只要提取阶段出现异常（流式中断、工具参数截断、JSON 不可解析、请求失败等），就会出现：
+
+- conversations 看起来正常
+- memories 为空或明显偏少
+
+## 8. 三个最容易混淆的点（速查）
+
+1. `processor` 本身不维护 agent 那种完整 `conversation` 消息栈；  
+   该消息栈在 `analysis_agent` 内部维护。
+
+2. 在 `BackgroundMemoryProcessor` 场景下，`analysis_agent` 初始化时会设置  
+   `enable_conversation_history=False`，其 `conversation_history` 不参与常规历史持久化。
+
+3. “提取策略”和“存储结构”是两层职责：  
+   前者主要由 `analysis_agent` prompt 决定，后者由 `memory_manager` 实现决定。
+
+## 9. 一句话结论
+
+Evaluation Mode 的本质是：  
+**先由 `processor` 调模型做记忆抽取，再由 `agent` 调模型基于结构化记忆回答问题；两次清空历史用于隔离测试并保证评测公平。**
 

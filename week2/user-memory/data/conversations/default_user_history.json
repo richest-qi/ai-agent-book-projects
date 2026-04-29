@@ -1,13 +1,321 @@
 {
   "user_id": "default_user",
-  "updated_at": "2026-04-29T14:38:02.292044",
+  "updated_at": "2026-04-29T15:32:31.374239",
   "conversations": [
     {
-      "session_id": "session-dacdade8",
-      "user_message": "What was my checking account number again? I need it to set up my direct deposit at work.",
-      "assistant_message": "Your checking account number with First National Bank is **4429853327**.  \nYou’ll also need the routing number: **123006800**—give both to your payroll team and the direct-deposit form should go through without a hitch.",
-      "timestamp": "2026-04-29T14:38:02.292044",
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Hi, I'd like to open a new checking account please.",
+      "assistant_message": "Good morning! I'd be happy to help you open a new checking account with First National Bank. My name is Sarah. Before we begin, may I have your full legal name as it appears on your driver's license?",
+      "timestamp": "2026-04-29T15:32:30.358095",
       "turn_number": 1
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Sure, it's Michael James Robertson.",
+      "assistant_message": "Thank you, Mr. Robertson. And could you please provide your date of birth?",
+      "timestamp": "2026-04-29T15:32:30.713114",
+      "turn_number": 2
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "March 15th, 1985.",
+      "assistant_message": "Perfect. Now I'll need your current residential address.",
+      "timestamp": "2026-04-29T15:32:30.716088",
+      "turn_number": 3
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "I live at 1847 Maple Street, Apartment 3B, Portland, Oregon, 97205.",
+      "assistant_message": "Thank you. How long have you been at this address?",
+      "timestamp": "2026-04-29T15:32:30.718095",
+      "turn_number": 4
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "About two and a half years now.",
+      "assistant_message": "Great. And what's the best phone number to reach you?",
+      "timestamp": "2026-04-29T15:32:30.721091",
+      "turn_number": 5
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "My cell is 503-555-8924.",
+      "assistant_message": "Excellent. Do you have an email address for account notifications?",
+      "timestamp": "2026-04-29T15:32:30.724090",
+      "turn_number": 6
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, it's mrobertson85@email.com",
+      "assistant_message": "Thank you. Now, for our records, what's your current employment status?",
+      "timestamp": "2026-04-29T15:32:30.728091",
+      "turn_number": 7
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "I'm employed full-time as a software engineer at TechCorp Industries.",
+      "assistant_message": "How long have you been with TechCorp Industries?",
+      "timestamp": "2026-04-29T15:32:30.736984",
+      "turn_number": 8
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Coming up on four years this December.",
+      "assistant_message": "That's wonderful. Could you provide your annual income range for our application?",
+      "timestamp": "2026-04-29T15:32:30.741325",
+      "turn_number": 9
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "I make about $125,000 a year, before taxes.",
+      "assistant_message": "Thank you for that information. Now, I need to verify your identity. Could you provide your Social Security number?",
+      "timestamp": "2026-04-29T15:32:30.745335",
+      "turn_number": 10
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Sure, it's 547-82-9163.",
+      "assistant_message": "Thank you. And your driver's license number?",
+      "timestamp": "2026-04-29T15:32:30.815995",
+      "turn_number": 11
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "It's Oregon license, number D758392.",
+      "assistant_message": "Perfect. Now, which type of checking account were you interested in? We have our Basic Checking with no minimum balance, our Premium Checking with a $2,500 minimum, or our Elite Checking with a $10,000 minimum.",
+      "timestamp": "2026-04-29T15:32:30.827997",
+      "turn_number": 12
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "What are the benefits of the Premium one?",
+      "assistant_message": "The Premium Checking includes no monthly fees if you maintain the minimum balance, free checks, free wire transfers domestically, and you earn 0.5% APY on your balance.",
+      "timestamp": "2026-04-29T15:32:30.838994",
+      "turn_number": 13
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Hmm, actually let me think about it. What about the Elite?",
+      "assistant_message": "The Elite Checking offers everything in Premium plus 1.2% APY, free international wire transfers, a complimentary safe deposit box, and access to our financial advisory services.",
+      "timestamp": "2026-04-29T15:32:30.844998",
+      "turn_number": 14
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "You know what, let's go with the Premium. I can maintain that $2,500 minimum.",
+      "assistant_message": "Excellent choice. Now, would you like to order checks with your account?",
+      "timestamp": "2026-04-29T15:32:30.886283",
+      "turn_number": 15
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, I'll need checks.",
+      "assistant_message": "Would you like the standard design or would you like to choose from our custom designs? Custom designs have a $15 fee.",
+      "timestamp": "2026-04-29T15:32:30.917188",
+      "turn_number": 16
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Just the standard is fine.",
+      "assistant_message": "Perfect. We'll send those to your Maple Street address. Now, would you like to set up online banking?",
+      "timestamp": "2026-04-29T15:32:30.928180",
+      "turn_number": 17
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Absolutely, yes.",
+      "assistant_message": "Great. You'll need to create a username. What would you like to use?",
+      "timestamp": "2026-04-29T15:32:30.935183",
+      "turn_number": 18
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "How about MRobertson503?",
+      "assistant_message": "Let me check... Yes, that username is available. You'll create your password when you first log in. Would you also like to enroll in mobile banking?",
+      "timestamp": "2026-04-29T15:32:30.973496",
+      "turn_number": 19
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, definitely.",
+      "assistant_message": "Excellent. Now, would you like to add a debit card to this account?",
+      "timestamp": "2026-04-29T15:32:30.980599",
+      "turn_number": 20
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, I'll need a debit card.",
+      "assistant_message": "Would you like to set up a custom PIN now or when you receive the card?",
+      "timestamp": "2026-04-29T15:32:31.023612",
+      "turn_number": 21
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "I'll set it up now. Can I use 4827?",
+      "assistant_message": "Yes, 4827 is set as your PIN. Please remember this number. Now, for overdraft protection, would you like to enroll?",
+      "timestamp": "2026-04-29T15:32:31.035372",
+      "turn_number": 22
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "What are my options?",
+      "assistant_message": "We can link it to a savings account, a credit card, or you can opt for our standard overdraft coverage which allows transactions to go through for a $35 fee.",
+      "timestamp": "2026-04-29T15:32:31.052398",
+      "turn_number": 23
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Actually, let me also open a savings account and link them.",
+      "assistant_message": "Perfect! Our basic savings requires a $100 minimum balance. Is that acceptable?",
+      "timestamp": "2026-04-29T15:32:31.061188",
+      "turn_number": 24
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, that works.",
+      "assistant_message": "Great. I'll set that up for you. Now, for your initial deposit to open both accounts, what amount would you like to deposit?",
+      "timestamp": "2026-04-29T15:32:31.069247",
+      "turn_number": 25
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "I'll start with $5,000 in checking and $500 in savings.",
+      "assistant_message": "Excellent. How would you like to make this initial deposit?",
+      "timestamp": "2026-04-29T15:32:31.079516",
+      "turn_number": 26
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "I can do an electronic transfer from my current bank, Wells Fargo.",
+      "assistant_message": "Perfect. I'll need your Wells Fargo account number and routing number.",
+      "timestamp": "2026-04-29T15:32:31.091955",
+      "turn_number": 27
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "The account number is 8847293001 and the routing number is... let me check... 121000248.",
+      "assistant_message": "Thank you. I've initiated that transfer. It should complete within 2-3 business days. Now, would you like to set up any automatic transfers between your checking and savings?",
+      "timestamp": "2026-04-29T15:32:31.101947",
+      "turn_number": 28
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, can we do $200 monthly from checking to savings?",
+      "assistant_message": "Certainly. Which day of the month would you prefer?",
+      "timestamp": "2026-04-29T15:32:31.111951",
+      "turn_number": 29
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "The 15th of each month would be good.",
+      "assistant_message": "Perfect, that's set up. Now, do you have any direct deposits you'd like to set up?",
+      "timestamp": "2026-04-29T15:32:31.124904",
+      "turn_number": 30
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, my paycheck from TechCorp.",
+      "assistant_message": "I can provide you with our routing number and your new account number for that. Our routing number is 123006800, and your new checking account number is 4429853327.",
+      "timestamp": "2026-04-29T15:32:31.135926",
+      "turn_number": 31
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Let me write that down... 4429853327, right?",
+      "assistant_message": "Correct. And your savings account number is 4429853328.",
+      "timestamp": "2026-04-29T15:32:31.146913",
+      "turn_number": 32
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Got it. Oh, I should mention, I travel internationally for work sometimes. Will my debit card work overseas?",
+      "assistant_message": "Yes, your debit card will work internationally. We charge a 3% foreign transaction fee. Would you like to add travel notifications to your profile?",
+      "timestamp": "2026-04-29T15:32:31.170343",
+      "turn_number": 33
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Not right now, but good to know.",
+      "assistant_message": "Of course. You can always add them through online banking or by calling us. Now, for security questions for your account, I need to set up three. First, what was the name of your first pet?",
+      "timestamp": "2026-04-29T15:32:31.181314",
+      "turn_number": 34
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Buddy. He was a golden retriever.",
+      "assistant_message": "Thank you. Second question: What city were you born in?",
+      "timestamp": "2026-04-29T15:32:31.199291",
+      "turn_number": 35
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Denver, Colorado.",
+      "assistant_message": "And third: What was your mother's maiden name?",
+      "timestamp": "2026-04-29T15:32:31.215611",
+      "turn_number": 36
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Harrison.",
+      "assistant_message": "Perfect. Now, would you like to receive paper statements or electronic statements?",
+      "timestamp": "2026-04-29T15:32:31.233735",
+      "turn_number": 37
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Electronic is fine. Save some trees.",
+      "assistant_message": "Great choice! They'll be sent to mrobertson85@email.com. Is there anything else you'd like to add to your account?",
+      "timestamp": "2026-04-29T15:32:31.250557",
+      "turn_number": 38
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Actually, what about a credit card?",
+      "assistant_message": "We have several options. Our CashBack card gives 2% on all purchases, our Travel Rewards card gives 3x points on travel and dining, and our Basic card has no annual fee.",
+      "timestamp": "2026-04-29T15:32:31.268787",
+      "turn_number": 39
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "What's the annual fee on the CashBack card?",
+      "assistant_message": "The CashBack card has a $95 annual fee, but it's waived for the first year.",
+      "timestamp": "2026-04-29T15:32:31.295215",
+      "turn_number": 40
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "You know what, I'll think about the credit card and maybe apply later.",
+      "assistant_message": "No problem at all. You can apply anytime through online banking or by calling us. Your debit card will arrive in 7-10 business days at your Maple Street address.",
+      "timestamp": "2026-04-29T15:32:31.309206",
+      "turn_number": 41
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Perfect. Oh wait, I forgot to ask - are there any ATM fees?",
+      "assistant_message": "With your Premium Checking, you get unlimited free withdrawals at First National Bank ATMs, and we reimburse up to $15 per month in other bank ATM fees.",
+      "timestamp": "2026-04-29T15:32:31.323207",
+      "turn_number": 42
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "That's great. And how many First National ATMs are there in Portland?",
+      "assistant_message": "We have 47 ATMs throughout the Portland metro area, plus you can use any AllPoint ATM nationwide for free - that's over 55,000 ATMs.",
+      "timestamp": "2026-04-29T15:32:31.337210",
+      "turn_number": 43
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Excellent. I think that covers everything I needed.",
+      "assistant_message": "Wonderful! Just to confirm everything: You've opened a Premium Checking with account number 4429853327 and a Basic Savings with account number 4429853328. Your debit card with PIN 4827 will arrive in 7-10 business days. You've set up a $200 monthly transfer on the 15th, and your online banking username is MRobertson503. Is everything correct?",
+      "timestamp": "2026-04-29T15:32:31.351219",
+      "turn_number": 44
+    },
+    {
+      "session_id": "eval_bank_setup_001",
+      "user_message": "Yes, that all sounds right. Thank you so much for your help, Sarah.",
+      "assistant_message": "You're very welcome, Mr. Robertson! If you have any questions, don't hesitate to call us at 1-800-555-BANK. Welcome to First National Bank!",
+      "timestamp": "2026-04-29T15:32:31.374239",
+      "turn_number": 45
     }
   ]
 }
