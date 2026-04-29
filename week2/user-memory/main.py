@@ -586,7 +586,7 @@ def run_evaluation_mode(user_id: str, memory_mode: MemoryMode, verbose: bool = T
                     
                     # Summarize results
                     total_added = sum(r.get('summary', {}).get('added', 0) for r in results)
-                    total_updated = sum(r.get('summary', {}a).get('updated', 0) for r in results)
+                    total_updated = sum(r.get('summary', {}).get('updated', 0) for r in results)
                     total_deleted = sum(r.get('summary', {}).get('deleted', 0) for r in results)
                     
                     print(f"  ✅ Memory processing complete:")
