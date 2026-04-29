@@ -1,209 +1,86 @@
 {
   "user_id": "default_user",
   "type": "notes",
-  "updated_at": "2026-04-28T16:07:20.940398",
+  "updated_at": "2026-04-29T14:37:53.495894",
   "notes": [
     {
-      "note_id": "49f1812c-986a-4e49-9821-ac3801c61cd0",
-      "content": "Full name: Michael James Robertson",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:29.822734",
-      "updated_at": "2026-04-28T14:49:29.822734",
+      "note_id": "bd2968c8-464a-4b25-9a9f-da74d810f840",
+      "content": "Michael James Robertson (DOB: March 15, 1985) lives at 1847 Maple Street, Apartment 3B, Portland, Oregon 97205. He has lived there for 2.5 years. His phone number is 503-555-8924 and email is mrobertson85@email.com.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.470337",
+      "updated_at": "2026-04-29T14:37:53.470337",
       "tags": [
-        "personal",
-        "name"
-      ]
-    },
-    {
-      "note_id": "0f84a6ec-8151-4e3e-b98f-30cb966c2367",
-      "content": "Date of birth: March 15, 1985",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.177314",
-      "updated_at": "2026-04-28T14:49:30.178305",
-      "tags": [
-        "personal",
-        "dob"
-      ]
-    },
-    {
-      "note_id": "c12b7a7b-a7ef-4d17-bdc9-488dee930d76",
-      "content": "Address: 1847 Maple Street, Apartment 3B, Portland, Oregon, 97205",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.180311",
-      "updated_at": "2026-04-28T14:49:30.180311",
-      "tags": [
-        "personal",
+        "personal_info",
+        "contact",
         "address"
       ]
     },
     {
-      "note_id": "55a45f7a-6132-47d3-aba3-e501f81e8881",
-      "content": "Phone: 503-555-8924",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.183457",
-      "updated_at": "2026-04-28T14:49:30.183457",
-      "tags": [
-        "personal",
-        "phone"
-      ]
-    },
-    {
-      "note_id": "a684177b-fe4b-45c9-90c3-6ea8a0a08a8b",
-      "content": "Email: mrobertson85@email.com",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.185456",
-      "updated_at": "2026-04-28T14:49:30.185456",
-      "tags": [
-        "personal",
-        "email"
-      ]
-    },
-    {
-      "note_id": "f4939ed8-5978-4284-bca4-d066572be6b3",
-      "content": "Employment: Software engineer at TechCorp Industries for 4 years, $125,000 annual income",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.187457",
-      "updated_at": "2026-04-28T14:49:30.187457",
+      "note_id": "4f59a43c-ea5a-49ee-ac74-2f445f7b2c49",
+      "content": "Michael is employed full-time as a software engineer at TechCorp Industries, where he has worked for nearly 4 years (since December). His annual income is $125,000 before taxes.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.477106",
+      "updated_at": "2026-04-29T14:37:53.477106",
       "tags": [
         "employment",
         "income"
       ]
     },
     {
-      "note_id": "1bec32e1-0950-4aac-a3b1-0c7810d34b3d",
-      "content": "Banking: Premium Checking account #4429853327 and Basic Savings #4429853328 at First National Bank",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.189457",
-      "updated_at": "2026-04-28T14:49:30.189457",
+      "note_id": "238837f9-8f9a-4cd8-81ee-d66c02648d6d",
+      "content": "Michael opened Premium Checking account (#4429853327) and Basic Savings account (#4429853328) with First National Bank. He maintains $2,500 minimum in checking and $100 minimum in savings. His online banking username is MRobertson503.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.480106",
+      "updated_at": "2026-04-29T14:37:53.480106",
       "tags": [
         "banking",
         "accounts"
       ]
     },
     {
-      "note_id": "c719cb07-7834-4225-8a6a-8e22b7791ab6",
-      "content": "Online banking username: MRobertson503",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.192459",
-      "updated_at": "2026-04-28T14:49:30.192459",
+      "note_id": "331f9c9d-6b4d-4760-9a88-a067d0bbbed4",
+      "content": "Michael has Wells Fargo account (#8847293001, routing 121000248) which he used for initial deposit. He set up $200 monthly auto-transfer from checking to savings on the 15th of each month. First National Bank routing number is 123006800.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.483108",
+      "updated_at": "2026-04-29T14:37:53.483108",
       "tags": [
         "banking",
-        "online"
+        "transfers"
       ]
     },
     {
-      "note_id": "06409c6b-1d17-4924-bffe-131cb3abdabf",
-      "content": "Debit card PIN: 4827",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.194461",
-      "updated_at": "2026-04-28T14:49:30.194461",
+      "note_id": "7a284b22-3f90-4c0a-aab8-4bc53a568de5",
+      "content": "Michael's debit card PIN is 4827. He chose standard checks (no custom design). He receives electronic statements. He has 3% foreign transaction fee on international purchases. He gets unlimited free First National ATM use and $15/month reimbursement for other ATM fees.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.487107",
+      "updated_at": "2026-04-29T14:37:53.487107",
       "tags": [
         "banking",
-        "security"
+        "debit_card",
+        "fees"
       ]
     },
     {
-      "note_id": "0b8251fe-c8f6-43e3-aef4-4ce7c3916137",
-      "content": "Security questions: First pet was Buddy (golden retriever), born in Denver, CO, mother's maiden name is Harrison",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.204321",
-      "updated_at": "2026-04-28T14:49:30.204321",
+      "note_id": "85dbc7bf-0bf0-43a9-a027-bc721ca8519d",
+      "content": "Michael travels internationally for work sometimes. He was born in Denver, Colorado. His first pet was a golden retriever named Buddy. His mother's maiden name is Harrison.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.491105",
+      "updated_at": "2026-04-29T14:37:53.491105",
       "tags": [
-        "security",
-        "personal"
-      ]
-    },
-    {
-      "note_id": "c5d4fe7e-8b22-4b6e-8e90-5c8c66f2c408",
-      "content": "Banking preferences: Electronic statements, $200 monthly auto-transfer from checking to savings on 15th",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.207320",
-      "updated_at": "2026-04-28T14:49:30.207320",
-      "tags": [
-        "banking",
-        "preferences"
-      ]
-    },
-    {
-      "note_id": "da15482d-d96c-4d94-9b1e-6c86a7280a35",
-      "content": "Former bank: Wells Fargo with account #8847293001",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.209318",
-      "updated_at": "2026-04-28T14:49:30.209318",
-      "tags": [
-        "banking",
-        "previous"
-      ]
-    },
-    {
-      "note_id": "3925a80f-d4f5-42e6-82e2-1724fbc1f395",
-      "content": "Travels internationally for work sometimes",
-      "session_id": "session-70aad827",
-      "created_at": "2026-04-28T14:49:30.212317",
-      "updated_at": "2026-04-28T14:49:30.212317",
-      "tags": [
+        "personal_info",
         "travel",
-        "work"
+        "security_questions"
       ]
     },
     {
-      "note_id": "19eab6f3-0e51-4e0a-a106-1d725587759f",
-      "content": "First National Bank routing number: 123006800. User has Premium Checking account #4429853327 and Basic Savings account #4429853328. Debit card PIN is 4827. Bank offers 3% foreign transaction fee and reimburses up to $15/month in ATM fees. There are 47 First National ATMs in Portland plus access to 55,000+ AllPoint ATMs nationwide.",
-      "session_id": "session-254e5905",
-      "created_at": "2026-04-28T16:06:39.643954",
-      "updated_at": "2026-04-28T16:06:39.643954",
+      "note_id": "0d35c72f-b6db-4b23-a60f-de3f19ac779f",
+      "content": "Michael's Social Security number is 547-82-9163. His Oregon driver's license number is D758392.",
+      "session_id": "session-ddd2ea9c",
+      "created_at": "2026-04-29T14:37:53.495894",
+      "updated_at": "2026-04-29T14:37:53.495894",
       "tags": [
-        "banking",
-        "first-national",
-        "accounts"
-      ]
-    },
-    {
-      "note_id": "3d4c1f26-026d-4b34-8942-651ae4197d1a",
-      "content": "User has Wells Fargo account #8847293001 with routing number 121000248 that was used for initial transfer. Initial deposits were $5,000 to checking and $500 to savings. User set up $200 monthly auto-transfer from checking to savings on the 15th of each month.",
-      "session_id": "session-254e5905",
-      "created_at": "2026-04-28T16:06:50.905944",
-      "updated_at": "2026-04-28T16:06:50.905944",
-      "tags": [
-        "banking",
-        "transfers",
-        "wells-fargo"
-      ]
-    },
-    {
-      "note_id": "12e3188e-c657-4f9e-9d28-5ab83f7e8a8c",
-      "content": "User was born in Denver, Colorado. Has lived at current Portland address for 2.5 years. Mother's maiden name is Harrison. First pet was a golden retriever named Buddy.",
-      "session_id": "session-254e5905",
-      "created_at": "2026-04-28T16:07:01.433253",
-      "updated_at": "2026-04-28T16:07:01.433253",
-      "tags": [
-        "personal",
-        "background",
-        "family"
-      ]
-    },
-    {
-      "note_id": "e6958287-fd5b-4dd2-b387-073015b20f8e",
-      "content": "User works at TechCorp Industries as a software engineer, approaching 4 years of employment in December. Annual income is $125,000 before taxes. Travels internationally for work sometimes.",
-      "session_id": "session-254e5905",
-      "created_at": "2026-04-28T16:07:10.876690",
-      "updated_at": "2026-04-28T16:07:10.876690",
-      "tags": [
-        "employment",
-        "techcorp",
-        "travel"
-      ]
-    },
-    {
-      "note_id": "565eaf23-d4d6-40ee-b33b-fb315cf689ea",
-      "content": "User chose Premium Checking account over Elite option, can maintain $2,500 minimum balance. Ordered standard checks (no custom design). Enrolled in online and mobile banking. Declined credit card offers for now but may apply later. Chose electronic statements over paper.",
-      "session_id": "session-254e5905",
-      "created_at": "2026-04-28T16:07:20.940398",
-      "updated_at": "2026-04-28T16:07:20.940398",
-      "tags": [
-        "banking",
-        "preferences",
-        "decisions"
+        "personal_info",
+        "identification"
       ]
     }
   ]
