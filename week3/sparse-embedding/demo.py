@@ -278,8 +278,8 @@ def main():
     logger.info("\n" + "="*50)
     logger.info("DEMO COMPLETED")
     logger.info("="*50)
-    logger.info("\nVisit http://localhost:8000 in your browser for the interactive UI")
-    logger.info("API documentation available at http://localhost:8000/docs")
+    logger.info(f"\nVisit {BASE_URL} in your browser for the interactive UI")
+    logger.info(f"API documentation available at {BASE_URL}/docs")
 
 
 if __name__ == "__main__":
