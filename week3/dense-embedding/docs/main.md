@@ -37,7 +37,7 @@ doc_ids, distances = vector_index.search(query_embedding, request.top_k)
 2026-05-09 16:35:56 - vector_search - [INFO] - main.py:139 - lifespan() - 📚 Docs available at http://0.0.0.0:4240/docs
 ```   
 下载的embedding model，BGM-M3，其保存路径为：C:\Users\admin\.cache\huggingface\hub\models--BAAI--bge-m3       
-2. 把qucik_demo启起来：`python quick_demo.py` 
+2. 把qucik_demo启起来：`python quick_demo.py`。注意curl的格式，macOS和Windows格式不一样，直接复制quick_demo中的curl粘贴到winddows的cmd中会报错。
 ```txt
 ============================================================
   Vector Similarity Search - Quick Demo
