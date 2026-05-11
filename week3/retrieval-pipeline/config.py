@@ -28,10 +28,10 @@ class ServiceConfig:
 class RerankerConfig:
     """Configuration for the reranker model."""
     model_name: str = "BAAI/bge-reranker-v2-m3"
-    device: str = "mps"  # Use MPS for Mac M1/M2
+    device: Optional[str] = None  # Auto-detect: cuda > mps > cpu
     batch_size: int = 32
     max_length: int = 8192  # Increased to match HARD_LIMIT in chunking
-    use_fp16: bool = True  # Use half precision for faster inference on Mac
+    use_fp16: bool = True
     
 @dataclass
 class PipelineConfig:
@@ -61,4 +61,8 @@ class PipelineConfig:
             config.host = os.getenv("PIPELINE_HOST")
         if os.getenv("DEBUG"):
             config.debug = os.getenv("DEBUG").lower() == "true"
+        if os.getenv("RERANKER_DEVICE"):
+            config.reranker.device = os.getenv("RERANKER_DEVICE")
+        if os.getenv("RERANKER_USE_FP16"):
+            config.reranker.use_fp16 = os.getenv("RERANKER_USE_FP16").lower() == "true"
         return config

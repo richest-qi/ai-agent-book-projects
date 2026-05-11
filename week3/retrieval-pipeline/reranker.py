@@ -30,6 +30,31 @@ class RerankResult:
 
 class Reranker:
     """Reranker using BGE-Reranker-v2 model."""
+
+    @staticmethod
+    def _resolve_device(device: Optional[str]) -> str:
+        """Resolve device with safe fallbacks across platforms."""
+        if device:
+            requested = device.lower()
+            if requested == "cuda":
+                if torch.cuda.is_available():
+                    return "cuda"
+                logger.warning("CUDA requested but not available. Falling back to CPU.")
+                return "cpu"
+            if requested == "mps":
+                if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                    return "mps"
+                logger.warning("MPS requested but not available. Falling back to CPU.")
+                return "cpu"
+            if requested == "cpu":
+                return "cpu"
+            logger.warning(f"Unknown device '{device}'. Falling back to auto detection.")
+
+        if torch.cuda.is_available():
+            return "cuda"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+        return "cpu"
     
     def _ensure_model_downloaded(self, model_name: str):
         """Check if model is cached and download if needed with progress.
@@ -91,14 +116,8 @@ class Reranker:
         """
         self.model_name = model_name
         
-        # Auto-detect device if not specified
-        if device is None:
-            if torch.backends.mps.is_available():
-                device = "mps"
-            elif torch.cuda.is_available():
-                device = "cuda"
-            else:
-                device = "cpu"
+        # Resolve device with cross-platform safe fallbacks
+        device = self._resolve_device(device)
         
         self.device = device
         self.use_fp16 = use_fp16 and device != "cpu"
