@@ -14,8 +14,48 @@ import json
 class RetrievalDemo:
     """Demo for the retrieval pipeline."""
     
-    def __init__(self, pipeline_url: str = "http://localhost:4242"):
+    def __init__(
+        self,
+        pipeline_url: str = "http://localhost:4242",
+        dense_url: str = "http://localhost:4240",
+        sparse_url: str = "http://localhost:4241",
+    ):
         self.pipeline_url = pipeline_url
+        self.dense_url = dense_url
+        self.sparse_url = sparse_url
+
+    async def _check_service(self, name: str, base_url: str) -> bool:
+        """Check whether a service is reachable."""
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            try:
+                response = await client.get(f"{base_url}/health")
+                if response.status_code == 200:
+                    return True
+            except Exception:
+                pass
+
+            # Fallback: some services may not expose /health
+            try:
+                response = await client.get(base_url)
+                return response.status_code < 500
+            except Exception:
+                print(f"  ✗ {name} unreachable: {base_url}")
+                return False
+
+    async def check_services(self) -> bool:
+        """Check dense/sparse/pipeline services before running demo."""
+        checks = [
+            ("Dense service", self.dense_url),
+            ("Sparse service", self.sparse_url),
+            ("Pipeline service", self.pipeline_url),
+        ]
+        all_ok = True
+        for name, url in checks:
+            ok = await self._check_service(name, url)
+            status = "✓" if ok else "✗"
+            print(f"  {status} {name}: {url}")
+            all_ok = all_ok and ok
+        return all_ok
         
     async def index_document(self, text: str, doc_id: str, metadata: Dict = None):
         """Index a document."""
@@ -44,6 +84,16 @@ class RetrievalDemo:
 async def main():
     """Run the demonstration."""
     demo = RetrievalDemo()
+
+    print("Checking all services...")
+    services_ok = await demo.check_services()
+    if not services_ok:
+        print("\nOne or more required services are unavailable.")
+        print("Please start all three services first:")
+        print("  1. Dense embedding service (port 4240)")
+        print("  2. Sparse embedding service (port 4241)")
+        print("  3. Retrieval pipeline (port 4242)")
+        return
     
     print("="*80)
     print("RETRIEVAL PIPELINE DEMONSTRATION")
@@ -143,6 +193,13 @@ async def main():
         success = result.get("success", False)
         status = "✓" if success else "✗"
         print(f"  {status} {doc['doc_id']}: {doc['text'][:60]}...")
+        if not success:
+            dense_error = result.get("dense", {}).get("error")
+            sparse_error = result.get("sparse", {}).get("error")
+            if dense_error:
+                print(f"      dense error : {dense_error}")
+            if sparse_error:
+                print(f"      sparse error: {sparse_error}")
     
     print("\n" + "="*80)
     print("DEMONSTRATION QUERIES")

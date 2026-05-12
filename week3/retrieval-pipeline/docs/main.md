@@ -1,2 +1,7 @@
-1. 下载依赖：`pip install -r requirements.txt`
-2. 
+1. 把4240、4241这两个服务启起来
+    - 4240服务启起来：dense-embedding下执行`python main.py`
+    - 4241服务启起来：sparse-embedding下执行`python server,py`
+2. 把4242这个服务启起来：retrieval-pipeline
+    - 下载依赖：`pip install -r requirements.txt`
+    - 服务器跑起来：`python main.py`，会下载ge-reranker-v2重排序模型。
+3. 跑demo：`python demo.py`，
