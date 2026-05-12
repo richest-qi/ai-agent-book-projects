@@ -101,8 +101,10 @@ class MemoryIndexer:
             self.chunk_texts[chunk_id] = chunk_text
             
             # Prepare document for retrieval pipeline
+            # 必须传顶层 doc_id：否则 pipeline 会自生成 id，search 结果可能无法与本地 chunk 对齐
             doc = {
                 "text": chunk_text,
+                "doc_id": chunk_id,
                 "metadata": {
                     "doc_id": chunk_id,
                     "test_id": chunk.test_id,
@@ -253,6 +255,7 @@ class MemoryIndexer:
             chunk_text = self.chunk_texts.get(chunk_id) or self._prepare_chunk_text(chunk)
             doc = {
                 "text": chunk_text,
+                "doc_id": chunk_id,
                 "metadata": {
                     "doc_id": chunk_id,
                     "test_id": chunk.test_id,
@@ -334,16 +337,13 @@ class MemoryIndexer:
             results = []
             for item in search_results:
                 # Try to get our chunk_id from different sources
-                chunk_id = None
-                
-                # First, check if metadata contains our doc_id
-                metadata = item.get("metadata", {})
-                if metadata.get("doc_id"):
-                    chunk_id = metadata.get("doc_id")
-                else:
-                    # Fall back to doc_id mapping
-                    generated_doc_id = item.get("doc_id", "")
-                    chunk_id = self.doc_id_mapping.get(generated_doc_id)
+                metadata = item.get("metadata") or {}
+                pipeline_doc_id = item.get("doc_id") or ""
+                chunk_id = metadata.get("doc_id") or pipeline_doc_id
+                if chunk_id not in self.chunks and pipeline_doc_id:
+                    mapped = self.doc_id_mapping.get(pipeline_doc_id)
+                    if mapped:
+                        chunk_id = mapped
                 
                 # Get chunk from local storage
                 if chunk_id and chunk_id in self.chunks:

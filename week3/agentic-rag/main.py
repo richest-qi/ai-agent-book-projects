@@ -4,7 +4,16 @@ import os
 import json
 import logging
 import argparse
+from pathlib import Path
 from typing import Optional
+
+from dotenv import load_dotenv
+
+_AGENTIC_RAG_DIR = Path(__file__).resolve().parent
+load_dotenv(_AGENTIC_RAG_DIR / ".env")
+if not os.getenv("KIMI_API_KEY") and os.getenv("MOONSHOT_API_KEY"):
+    os.environ["KIMI_API_KEY"] = os.environ["MOONSHOT_API_KEY"]
+
 from config import Config, KnowledgeBaseType
 from agent import AgenticRAG
 from chunking import DocumentIndexer
@@ -29,6 +38,9 @@ def setup_environment():
             logger.info("  - ARK_API_KEY for Doubao")
             logger.info("  - SILICONFLOW_API_KEY for SiliconFlow")
             logger.info("  - OPENAI_API_KEY for OpenAI")
+            logger.info(
+                f"  - Or set keys in {_AGENTIC_RAG_DIR / '.env'} (see .env.example)"
+            )
             return False
     except Exception as e:
         logger.error(f"Error checking API keys: {e}")
@@ -241,8 +253,7 @@ def main():
         
         config.chunking.chunk_size = args.chunk_size
         indexer = DocumentIndexer(config.knowledge_base, config.chunking)
-        
-        from pathlib import Path
+
         path = Path(args.index)
         
         if path.is_file():

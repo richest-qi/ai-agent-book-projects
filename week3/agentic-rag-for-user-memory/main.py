@@ -7,6 +7,7 @@ This script provides an interactive interface for:
 3. Evaluating the RAG agent on selected test cases
 """
 
+import os
 import argparse
 import json
 import logging
@@ -14,6 +15,15 @@ import sys
 from pathlib import Path
 from typing import Optional, List
 from datetime import datetime
+
+from dotenv import load_dotenv
+
+_PROJECT_DIR = Path(__file__).resolve().parent
+load_dotenv(_PROJECT_DIR / ".env")
+# week2 LLM evaluator expects KIMI_API_KEY; Kimi/Moonshot OpenAI API uses MOONSHOT_API_KEY elsewhere
+if not os.getenv("KIMI_API_KEY") and os.getenv("MOONSHOT_API_KEY"):
+    os.environ["KIMI_API_KEY"] = os.environ["MOONSHOT_API_KEY"]
+
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 from rich.table import Table

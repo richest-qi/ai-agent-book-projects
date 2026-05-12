@@ -3,6 +3,7 @@ __pycache__
 node_modules
 results/
 .*
+!.env.example
 *.log
 output/
 user-memory/data/
