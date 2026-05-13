@@ -1,6 +1,13 @@
 """Configuration for Agentic RAG System"""
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load week3/contextual-retrieval/.env before any os.getenv used by LLMConfig
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 from enum import Enum

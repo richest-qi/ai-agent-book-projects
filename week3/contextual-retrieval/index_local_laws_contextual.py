@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 RETRIEVAL_PIPELINE_URL = "http://localhost:4242"  # Default retrieval pipeline URL
-LAWS_DIR = Path("laws")  # Local laws directory
+_SCRIPT_DIR = Path(__file__).resolve().parent
+# 默认使用 week3/agentic-rag/laws（与本目录同级的示例法规库）
+LAWS_DIR = _SCRIPT_DIR.parent / "agentic-rag" / "laws"
 
 # Custom chunking configuration for legal documents
 LEGAL_CHUNKING_CONFIG = ChunkingConfig(
@@ -115,6 +117,12 @@ class ContextualLegalIndexer:
         
         if not self.laws_dir.exists():
             logger.error(f"Laws directory not found: {self.laws_dir}")
+            return documents
+        if not self.laws_dir.is_dir():
+            logger.error(
+                "Laws path exists but is not a directory (for example a file named "
+                f"'laws' blocks creating the folder): {self.laws_dir.resolve()}"
+            )
             return documents
         
         # Iterate through category directories
@@ -542,6 +550,12 @@ def main():
     
     parser = argparse.ArgumentParser(description="Index local legal documents with contextual retrieval")
     parser.add_argument("--pipeline-url", default=RETRIEVAL_PIPELINE_URL, help="Retrieval pipeline URL")
+    parser.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=LAWS_DIR,
+        help="Directory of legal documents (category subfolders with .md files). Default: ../agentic-rag/laws",
+    )
     parser.add_argument("--max-docs", type=int, help="Maximum number of documents to process")
     parser.add_argument("--categories", nargs="+", help="Specific categories to process")
     parser.add_argument("--no-contextual", action="store_true", help="Disable contextual enhancement")
@@ -563,6 +577,7 @@ def main():
     
     # Create indexer
     indexer = ContextualLegalIndexer(
+        laws_dir=args.laws_dir,
         pipeline_url=args.pipeline_url,
         use_contextual=not args.no_contextual,
         llm_config=llm_config
