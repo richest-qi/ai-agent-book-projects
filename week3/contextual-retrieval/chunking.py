@@ -95,22 +95,24 @@ class DocumentChunker:
                 current_chunk.append(para)
                 current_size += para_size
         
-        # Save final chunk
+        # Save final chunk — never drop document tail due to min_chunk_size
         if current_chunk:
             chunk_text = '\n\n'.join(current_chunk)
-            if len(chunk_text) >= self.config.min_chunk_size:
-                chunks.append(self._create_chunk(chunk_text, doc_id, len(chunks)))
+            chunks.append(self._create_chunk(chunk_text, doc_id, len(chunks)))
         
         return chunks
     
     def _chunk_by_size(self, text: str, doc_id: str) -> List[Dict[str, Any]]:
         """Simple size-based chunking"""
         chunks = []
-        
-        for i in range(0, len(text), self.config.chunk_size - self.config.chunk_overlap):
-            chunk_text = text[i:i + self.config.chunk_size]
-            
-            if len(chunk_text) >= self.config.min_chunk_size:
+        stride = self.config.chunk_size - self.config.chunk_overlap
+        starts = list(range(0, len(text), stride))
+        for idx, i in enumerate(starts):
+            chunk_text = text[i : i + self.config.chunk_size]
+            is_last = idx == len(starts) - 1
+            if not chunk_text:
+                continue
+            if is_last or len(chunk_text) >= self.config.min_chunk_size:
                 chunks.append(self._create_chunk(chunk_text, doc_id, len(chunks)))
         
         return chunks

@@ -3,6 +3,7 @@
 把长文档切成多段文本（法规按段落；对话按轮次），便于写入向量库和BM25。实现上先走`_create_basic_chunks`:  
 
 ```python
+# week3\contextual-retrieval\contextual_chunking.py
 # Step 1: Create basic chunks
 basic_chunks = self._create_basic_chunks(text, doc_id)
 logger.info(f"Created {len(basic_chunks)} basic chunks")
