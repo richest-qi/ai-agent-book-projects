@@ -6,6 +6,11 @@ from typing import Optional, Dict, Any, List
 from enum import Enum
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load week3/contextual-retrieval-for-user-memory/.env before any os.getenv used by LLMConfig
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 
 class Provider(str, Enum):
     """Supported LLM providers"""
@@ -89,11 +94,16 @@ class LLMConfig:
         provider = self.provider.lower()
         defaults = self.PROVIDER_DEFAULTS.get(provider, {})
         
-        # Determine API key
+        # Determine API key (Kimi and Moonshot share the same OpenAI-compatible endpoint)
         api_key = self.api_key or os.getenv(f"{provider.upper()}_API_KEY")
-        if not api_key and provider == "moonshot":
-            api_key = os.getenv("KIMI_API_KEY")  # Fallback for moonshot
-        
+        if not api_key and provider in ("kimi", "moonshot"):
+            api_key = os.getenv("MOONSHOT_API_KEY") or os.getenv("KIMI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                f"API key required for provider '{provider}'. "
+                "Add MOONSHOT_API_KEY or KIMI_API_KEY to .env in this directory (see env.example)."
+            )
+
         # Determine model
         model = self.model or defaults.get("model", "gpt-4o")
         
