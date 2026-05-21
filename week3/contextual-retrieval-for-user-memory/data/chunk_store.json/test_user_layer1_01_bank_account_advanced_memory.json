@@ -1,11 +1,11 @@
 {
   "user_id": "test_user_layer1_01_bank_account",
   "type": "advanced_json_cards",
-  "updated_at": "2026-05-14T16:09:21.461270",
+  "updated_at": "2026-05-18T14:24:15.411419",
   "categories": {
     "financial": {
-      "fnal_premium_checking_4429853327": {
-        "backstory": "Opened Premium Checking account with First National Bank during phone call with representative Sarah",
+      "fn_premium_checking_4429853327": {
+        "backstory": "Opened Premium Checking account with First National Bank during phone call with representative Sarah.",
         "date_created": "2024-06-12 14:45:00",
         "person": "Michael James Robertson (primary)",
         "relationship": "primary account holder",
@@ -13,6 +13,7 @@
         "account_type": "Premium Checking",
         "account_number": "4429853327",
         "routing_number": "123006800",
+        "initial_deposit": 5000,
         "minimum_balance": 2500,
         "apy": 0.5,
         "benefits": [
@@ -21,11 +22,9 @@
           "free domestic wire transfers",
           "0.5% APY"
         ],
-        "initial_deposit": 5000,
-        "funding_source": "Wells Fargo account 8847293001",
         "_metadata": {
-          "created_at": "2026-05-14T16:09:21.461270",
-          "updated_at": "2026-05-14T16:09:21.461270"
+          "created_at": "2026-05-18T14:24:15.411419",
+          "updated_at": "2026-05-18T14:24:15.411419"
         }
       }
     }
