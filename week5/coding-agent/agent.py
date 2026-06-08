@@ -57,14 +57,14 @@ class CodingAgent:
     def _load_tools(self) -> List[Dict[str, Any]]:
         """Load tool definitions from tools.json"""
         tools_file = Path(__file__).parent / "tools.json"
-        with open(tools_file, 'r') as f:
+        with open(tools_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return data["tools"]
     
     def _load_system_prompt(self) -> str:
         """Load system prompt from system-prompt.md"""
         prompt_file = Path(__file__).parent / "system-prompt.md"
-        with open(prompt_file, 'r') as f:
+        with open(prompt_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Inject current environment information

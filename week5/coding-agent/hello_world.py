@@ -1,19 +1,15 @@
-#!/usr/bin/env python3
+def greet_person(name):
+    """Function that greets a person by name."""
+    return f"Hello, {name}! Nice to meet you!"
 
-from typing import Any
-
-def greet(name: str) -> str:
-    """Return a friendly greeting for the given name."""
-    return f"Hello, {name}!"
-
-
-def main() -> None:
-    # Requirement 1: Print "Hello, World!"
+def main():
+    """Main function to demonstrate the greeting functionality."""
+    # Print "Hello, World!"
     print("Hello, World!")
-
-    # Requirement 3: Demonstrate the function
-    print(greet("Alice"))
-
+    
+    # Demonstrate the greet_person function
+    print(greet_person("Alice"))
+    print(greet_person("Bob"))
 
 if __name__ == "__main__":
     main()

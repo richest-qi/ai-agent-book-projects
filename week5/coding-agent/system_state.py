@@ -3,7 +3,8 @@ System state tracking for the coding agent
 """
 
 import os
-import subprocess
+import platform
+import sys
 from dataclasses import dataclass, field
 from typing import Dict, Any, List
 from datetime import datetime
@@ -17,8 +18,8 @@ class SystemState:
     todos: List[Dict[str, Any]] = field(default_factory=list)
     shell_sessions: Dict[str, Any] = field(default_factory=dict)
     default_shell_id: str = "default"
-    os_type: str = field(default_factory=lambda: os.uname().sysname)
-    python_version: str = field(default_factory=lambda: subprocess.getoutput("python3 --version"))
+    os_type: str = field(default_factory=platform.system)
+    python_version: str = field(default_factory=lambda: sys.version.split()[0])
     
     def get_system_hint(self) -> str:
         """Generate system hint message to append to context"""
