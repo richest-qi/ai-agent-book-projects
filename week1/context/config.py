@@ -3,11 +3,12 @@ Configuration module for Context-Aware Agent
 """
 
 import os
+from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# 从本目录加载 .env，避免因工作目录不同而读不到配置
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 class Config:
@@ -107,7 +108,7 @@ class Config:
         if provider == "siliconflow":
             return "Qwen/Qwen3-235B-A22B-Thinking-2507"
         elif provider == "doubao":
-            return "doubao-seed-1-6-thinking-250715"
+            return "doubao-seed-2-0-lite-260428"
         elif provider == "kimi" or provider == "moonshot":
             return "kimi-k2-0905-preview"
         else:

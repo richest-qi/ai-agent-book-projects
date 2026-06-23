@@ -336,7 +336,7 @@ class ContextAwareAgent:
                 api_key=api_key,
                 base_url="https://ark.cn-beijing.volces.com/api/v3"
             )
-            self.model = model or "doubao-seed-1-6-thinking-250715"
+            self.model = model or "doubao-seed-2-0-lite-260428"
         elif self.provider == "kimi" or self.provider == "moonshot":
             self.client = OpenAI(
                 api_key=api_key,

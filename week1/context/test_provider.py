@@ -68,7 +68,7 @@ def test_providers():
     if ark_key:
         print("\n# Using Doubao:")
         print("python main.py --provider doubao")
-        print("python main.py --provider doubao --model doubao-seed-1-6-thinking-250715")
+        print("python main.py --provider doubao --model doubao-seed-2-0-lite-260428")
     
     if not sf_key and not ark_key:
         print("\n⚠️ No API keys found. Please set one of:")

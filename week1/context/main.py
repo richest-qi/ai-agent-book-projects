@@ -6,6 +6,10 @@ import os
 import sys
 import argparse
 import logging
+
+# 必须在读取环境变量之前加载 .env（与 week1/web-search-agent 一致）
+from config import Config
+
 from agent import ContextAwareAgent, ContextMode
 import json
 from pathlib import Path
@@ -829,19 +833,19 @@ def interactive_mode(api_key: str, provider: str = "siliconflow", model: str = N
                 if new_provider in available_providers:
                     # Get the appropriate API key for the new provider
                     if new_provider == "siliconflow":
-                        new_api_key = os.getenv("SILICONFLOW_API_KEY")
+                        new_api_key = Config.get_api_key("siliconflow")
                         if not new_api_key:
-                            print("❌ SILICONFLOW_API_KEY not set in environment")
+                            print("❌ SILICONFLOW_API_KEY not set in .env")
                             continue
                     elif new_provider == "doubao":
-                        new_api_key = os.getenv("ARK_API_KEY")
+                        new_api_key = Config.get_api_key("doubao")
                         if not new_api_key:
-                            print("❌ ARK_API_KEY not set in environment")
+                            print("❌ ARK_API_KEY not set in .env")
                             continue
                     elif new_provider in ["kimi", "moonshot"]:
-                        new_api_key = os.getenv("MOONSHOT_API_KEY")
+                        new_api_key = Config.get_api_key(new_provider)
                         if not new_api_key:
-                            print("❌ MOONSHOT_API_KEY not set in environment")
+                            print("❌ MOONSHOT_API_KEY not set in .env")
                             continue
                     
                     # Update current settings
@@ -853,7 +857,6 @@ def interactive_mode(api_key: str, provider: str = "siliconflow", model: str = N
                     agent = ContextAwareAgent(current_api_key, current_mode, provider=current_provider, model=current_model)
                     
                     # Get default model name from config
-                    from config import Config
                     default_model = Config.get_default_model(current_provider)
                     
                     print(f"✅ Switched to provider: {current_provider}")
@@ -882,7 +885,6 @@ def interactive_mode(api_key: str, provider: str = "siliconflow", model: str = N
                 print("✅ Agent trajectory and conversation history reset.")
             
             elif user_input.lower() == 'status':
-                from config import Config
                 model_name = current_model or Config.get_default_model(current_provider)
                 print("\n📊 Current Configuration:")
                 print(f"  Provider: {current_provider.upper()}")
@@ -892,15 +894,15 @@ def interactive_mode(api_key: str, provider: str = "siliconflow", model: str = N
                 print(f"  Tool Calls: {len(agent.trajectory.tool_calls)}")
                 
                 # Show API key status
-                if current_provider == "siliconflow":
-                    key_status = "✅ Set" if os.getenv("SILICONFLOW_API_KEY") else "❌ Not set"
-                    print(f"  API Key (SILICONFLOW_API_KEY): {key_status}")
-                elif current_provider == "doubao":
-                    key_status = "✅ Set" if os.getenv("ARK_API_KEY") else "❌ Not set"
-                    print(f"  API Key (ARK_API_KEY): {key_status}")
-                elif current_provider in ["kimi", "moonshot"]:
-                    key_status = "✅ Set" if os.getenv("MOONSHOT_API_KEY") else "❌ Not set"
-                    print(f"  API Key (MOONSHOT_API_KEY): {key_status}")
+                env_var_map = {
+                    "siliconflow": "SILICONFLOW_API_KEY",
+                    "doubao": "ARK_API_KEY",
+                    "kimi": "MOONSHOT_API_KEY",
+                    "moonshot": "MOONSHOT_API_KEY",
+                }
+                env_var = env_var_map.get(current_provider, "API_KEY")
+                key_status = "✅ Set" if Config.get_api_key(current_provider) else "❌ Not set"
+                print(f"  API Key ({env_var}): {key_status}")
             
             elif user_input:
                 # Execute task
@@ -965,35 +967,33 @@ def main():
     parser.add_argument(
         "--api-key",
         type=str,
-        help="API key for the LLM provider (or set SILICONFLOW_API_KEY/ARK_API_KEY/MOONSHOT_API_KEY env var)"
+        help="API key for the LLM provider (or set keys in .env file)"
     )
     
     args = parser.parse_args()
     
-    # Get API key based on provider
+    # 未指定 --model 时，使用 .env 中的 MODEL_NAME 或 provider 默认模型
+    model = args.model or Config.get_default_model(args.provider)
+    
+    # Get API key: CLI 优先，否则从 .env 读取
     if args.api_key:
         api_key = args.api_key
-    elif args.provider == "doubao":
-        api_key = os.getenv("ARK_API_KEY")
-        if not api_key:
-            logger.error("Please provide API key via --api-key or ARK_API_KEY environment variable")
-            sys.exit(1)
-    elif args.provider == "siliconflow":
-        api_key = os.getenv("SILICONFLOW_API_KEY")
-        if not api_key:
-            logger.error("Please provide API key via --api-key or SILICONFLOW_API_KEY environment variable")
-            sys.exit(1)
-    elif args.provider in ["kimi", "moonshot"]:
-        api_key = os.getenv("MOONSHOT_API_KEY")
-        if not api_key:
-            logger.error("Please provide API key via --api-key or MOONSHOT_API_KEY environment variable")
-            sys.exit(1)
     else:
-        logger.error(f"Unknown provider: {args.provider}")
-        sys.exit(1)
+        api_key = Config.get_api_key(args.provider)
+        if not api_key:
+            env_var_map = {
+                "siliconflow": "SILICONFLOW_API_KEY",
+                "doubao": "ARK_API_KEY",
+                "kimi": "MOONSHOT_API_KEY",
+                "moonshot": "MOONSHOT_API_KEY",
+            }
+            env_var = env_var_map.get(args.provider, "API_KEY")
+            logger.error(f"Please provide API key via --api-key or set {env_var} in .env file")
+            logger.error("Copy env.example to .env and fill in your API keys")
+            sys.exit(1)
     
     # Log provider info
-    logger.info(f"Using provider: {args.provider}, model: {args.model or 'default'}")
+    logger.info(f"Using provider: {args.provider}, model: {model}")
     
     # Execute based on mode
     if args.mode == "single":
@@ -1031,7 +1031,7 @@ def main():
                     confirm = input("\nRun this task? (y/n): ").strip().lower()
                     if confirm == 'y':
                         run_single_task(api_key, selected_task['task'], args.context_mode, 
-                                      provider=args.provider, model=args.model)
+                                      provider=args.provider, model=model)
                     else:
                         print("Task cancelled.")
                 else:
@@ -1042,14 +1042,14 @@ def main():
                 sys.exit(0)
         else:
             run_single_task(api_key, args.task, args.context_mode, 
-                          provider=args.provider, model=args.model)
+                          provider=args.provider, model=model)
     
     elif args.mode == "ablation":
-        run_ablation_study(api_key, provider=args.provider, model=args.model, 
+        run_ablation_study(api_key, provider=args.provider, model=model, 
                           context_modes=args.ablation_modes)
     
     else:  # interactive
-        interactive_mode(api_key, provider=args.provider, model=args.model)
+        interactive_mode(api_key, provider=args.provider, model=model)
 
 
 if __name__ == "__main__":
