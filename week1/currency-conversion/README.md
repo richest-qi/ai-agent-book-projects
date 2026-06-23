@@ -81,30 +81,86 @@ base_url + /chat/completions
 | `choices[0].finish_reason` | `"tool_calls"` 表示模型要调用工具，而非直接给最终文本 |
 | `choices[0].message.tool_calls` | 工具调用列表（可一次返回多个） |
 | `choices[0].message.content` | 面向用户的可见回复（调用工具时可能为空字符串） |
-| `usage.completion_tokens_details.reasoning_tokens` | 思考过程消耗的 token 数（豆包 thinking 模型） |
 | `model` | 实际使用的模型 |
 | `usage.prompt_tokens` / `completion_tokens` | token 用量统计 |
 
-**关于 `reasoning_content`**
+### `tool_calls` 对象结构
 
-你在原始 JSON / `repr()` 输出里可能看到 `reasoning_content` 和 `encrypted_content`，这是**豆包 thinking 模型的厂商扩展字段**，不是 OpenAI 标准 Chat API 的固定 schema。
+当 `finish_reason` 为 `"tool_calls"` 时，模型不直接给最终文本（`content` 常为空），而是在 `choices[0].message.tool_calls` 里列出要执行的工具。它是一个**数组**，每个元素形如：
 
-因此：
-
-- 在**响应 JSON** 或 `message.model_dump()` 里通常能读到 `reasoning_content`
-- 用 SDK 对象做 **`.` 属性访问不一定可靠**（取决于 `openai` 包版本；较旧版本可能没有该属性，IDE 补全也常不显示）
-
-较稳妥的读取方式：
-
-```python
-msg = response.choices[0].message
-data = msg.model_dump()  # 或 msg.dict()
-reasoning = data.get("reasoning_content")  # 可能为 None
+```json
+{
+  "id": "call_e21osh8haywubjdgm1ixm3yd",
+  "type": "function",
+  "function": {
+    "name": "convert_currency",
+    "arguments": "{\"amount\": 1000, \"from_currency\": \"USD\", \"to_currency\": \"EUR\"}"
+  }
+}
 ```
 
-若只需知道「有没有思考、花了多少 token」，可看 `response.usage.completion_tokens_details.reasoning_tokens`。
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| `id` | string | 本次工具调用的唯一 ID；后续 `role: "tool"` 消息必须用 `tool_call_id` 回指它 |
+| `type` | string | 固定为 `"function"`（OpenAI function calling 格式） |
+| `function.name` | string | 工具名，如 `convert_currency`、`calculate` |
+| `function.arguments` | string | **JSON 字符串**（不是对象），需 `json.loads()` 解析 |
 
-工具执行完毕后，代码将 `assistant` 消息和 `tool` 结果追加到 `messages`，再发起下一轮请求，直到模型输出含 `FINAL ANSWER:` 的文本。
+`agent.py` 中的解析方式：
+
+```python
+for tool_call in message.tool_calls:
+    name = tool_call.function.name
+    args = json.loads(tool_call.function.arguments)
+```
+
+工具执行完后，须为**每个** `tool_calls` 条目追加一条 `role: "tool"` 消息：
+
+```json
+{
+  "role": "tool",
+  "tool_call_id": "call_e21osh8haywubjdgm1ixm3yd",
+  "content": "{\"converted_amount\": 920.0, ...}"
+}
+```
+
+对应关系：`tool_calls[i].id` ↔ `tool` 消息的 `tool_call_id`；`content` 为工具返回结果的 JSON 字符串。
+
+### 本例完整 `tool_calls` 轨迹（3 轮 API、4 次工具）
+
+**Iteration 1** — 模型一次返回 3 个 `convert_currency`（并行）：
+
+| # | id（示例） | name | arguments |
+|---|-----------|------|-----------|
+| 1 | `call_e21osh8...` | `convert_currency` | `amount=1000, USD → EUR` |
+| 2 | `call_tzfk9n...` | `convert_currency` | `amount=1000, USD → GBP` |
+| 3 | `call_w4p4oz...` | `convert_currency` | `amount=1000, USD → JPY` |
+
+本地执行结果 → 920.0 EUR、790.0 GBP、149500.0 JPY，各写回一条 `role: "tool"` 消息。
+
+**Iteration 2** — 模型返回 1 个 `calculate`：
+
+| # | id（示例） | name | arguments |
+|---|-----------|------|-----------|
+| 4 | `call_1jvh3f...` | `calculate` | `"(920 + 790 + 149500) / 3"` |
+
+工具返回 `result: 50403.333...`，再写回一条 `role: "tool"` 消息。
+
+**Iteration 3** — 无 `tool_calls`（`tool_calls: null`，`finish_reason: "stop"`），`content` 含 `FINAL ANSWER:` 及最终总结。
+
+`messages` 数组随轮次增长示意：
+
+```text
+[system]
+[user]              ← 换算任务
+[assistant]         ← tool_calls ×3（第 1 轮）
+[tool] ×3           ← 3 个换算结果
+[assistant]         ← tool_calls ×1（第 2 轮）
+[tool] ×1           ← 平均值计算结果
+[assistant]         ← FINAL ANSWER（第 3 轮）
+```
+
+因此 Chat API **每轮都要把完整 `messages` 再传一遍**；`tool_calls` 与 `tool` 结果必须成对出现，模型才能继续推理。
 
 ### Chat API vs Responses API
 
