@@ -84,6 +84,104 @@ base_url + /chat/completions
 | `model` | 实际使用的模型 |
 | `usage.prompt_tokens` / `completion_tokens` | token 用量统计 |
 
+### 首轮完整响应 JSON（Iteration 1）
+
+以下为实际运行中 **第 1 轮** API 返回的完整响应（`agent.py` 通过 `response.model_dump()` 打印）。此时 `finish_reason` 为 `tool_calls`，模型并行发起 3 次 `convert_currency`：
+
+```json
+{
+  "id": "0217822635062641e8917f6489049782b636a98f4bd750c43d81f",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "",
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": [
+          {
+            "id": "call_ka1x5unoqaegciptsej2p667",
+            "function": {
+              "arguments": "{\"amount\": 1000, \"from_currency\": \"USD\", \"to_currency\": \"EUR\"}",
+              "name": "convert_currency"
+            },
+            "type": "function"
+          },
+          {
+            "id": "call_et3zsizzd74e6g4putqj0351",
+            "function": {
+              "arguments": "{\"amount\": 1000, \"from_currency\": \"USD\", \"to_currency\": \"GBP\"}",
+              "name": "convert_currency"
+            },
+            "type": "function"
+          },
+          {
+            "id": "call_619p1ahiisx31fw0re7bhnmn",
+            "function": {
+              "arguments": "{\"amount\": 1000, \"from_currency\": \"USD\", \"to_currency\": \"JPY\"}",
+              "name": "convert_currency"
+            },
+            "type": "function"
+          }
+        ],
+        "reasoning_content": "I will handle the currency conversion of 1000 USD to EUR, GBP and JPY.I will first complete three currency conversion calls to get the equivalent values of 1000 USD in EUR, GBP and JPY, then calculate their average using the relevant calculation function.\n",
+        "encrypted_content": "djGZ74o/ma+ZEhDZmtk...（已截断）"
+      }
+    }
+  ],
+  "created": 1782263514,
+  "model": "doubao-seed-2-0-lite-260428",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 412,
+    "prompt_tokens": 617,
+    "total_tokens": 1029,
+    "completion_tokens_details": {
+      "reasoning_tokens": 233
+    }
+  }
+}
+```
+
+要点：
+
+- `message.content` 为空字符串，真正动作在 `tool_calls` 里
+- `tool_calls` 一次返回 3 个对象，分别换算 USD → EUR / GBP / JPY
+- `reasoning_content`、`encrypted_content` 为豆包扩展字段（见下一节）
+
+### PyCharm 调试：为何看不到 `reasoning_content`？
+
+在 PyCharm 中调试 `agent.py` 时，展开 `message`（`ChatCompletionMessage`）对象，顶层通常只能看到 `content`、`role`、`tool_calls` 等标准字段，**看不到** `reasoning_content` 和 `encrypted_content`：
+
+![PyCharm 调试 message 对象](docs/pycharm-message-debug.png)
+
+但 **Copy Value** 或 `message.model_dump()` 粘贴出来后，却能看见这两个字段（如上一节 JSON 所示）。原因是：
+
+1. `message` 是 OpenAI SDK 的 **Pydantic 模型**，标准字段定义在 `model_fields` 中（`content`、`role`、`tool_calls` 等）
+2. 豆包返回的 `reasoning_content`、`encrypted_content` 不在 OpenAI 标准 schema 内，因 `model_config` 设置了 `extra: 'allow'`，被存入 **`model_extra` 字典**，而非顶层属性
+3. PyCharm 调试器按**对象内存结构**展示 → 扩展字段藏在 `model_extra` 里（截图中 `model_extra` 为 dict，2 items）
+4. `model_dump()` / Copy Value 做的是**序列化合并** → 把 `model_fields` 与 `model_extra` 摊平为一份 JSON
+
+| 查看方式 | 能否看到 `reasoning_content` |
+|----------|-------------------------------|
+| PyCharm 展开 `message` 顶层 | 通常看不到（在 `model_extra` 内） |
+| 展开 `message.model_extra` | 能看到 |
+| `message.model_dump()` / Copy Value | 能看到（已合并到顶层） |
+
+调试时如需读取扩展字段：
+
+```python
+message.model_extra.get("reasoning_content")
+message.model_dump().get("reasoning_content")
+```
+
+本工程业务逻辑**不依赖**这两个字段；`agent.py` 只使用 `tool_calls` 和 `content`（`FINAL ANSWER:`）。
+
 ### `tool_calls` 对象结构
 
 当 `finish_reason` 为 `"tool_calls"` 时，模型不直接给最终文本（`content` 常为空），而是在 `choices[0].message.tool_calls` 里列出要执行的工具。它是一个**数组**，每个元素形如：
@@ -188,3 +286,14 @@ second = client.responses.create(
 ```
 
 本工程选用 Chat API，是因为工具调用（function calling）需要显式地在 `messages` 中往返 `tool_calls` 与 `tool` 结果，便于学习和调试完整 Agent 轨迹。
+
+## 与 week1/context 的区别
+
+| | `week1/context` | 本工程 |
+|---|---|---|
+| 入口 | 交互式 REPL | `python main.py` 直接跑完 |
+| 任务 | 5 个 sample + 消融实验 | 仅货币换算任务 |
+| 工具 | PDF、code_interpreter 等 | `convert_currency`、`calculate` |
+| 依赖 | 较多 | 仅 `openai`、`python-dotenv` |
+
+代码为独立副本，修改 `week1/context` 不会影响本目录。
