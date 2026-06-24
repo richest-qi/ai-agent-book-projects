@@ -152,7 +152,129 @@ base_url + /chat/completions
 
 - `message.content` 为空字符串，真正动作在 `tool_calls` 里
 - `tool_calls` 一次返回 3 个对象，分别换算 USD → EUR / GBP / JPY
-- `reasoning_content`、`encrypted_content` 为豆包扩展字段（见下一节）
+- `reasoning_content`、`encrypted_content` 为豆包扩展字段（见「PyCharm 调试」一节）
+
+### 第二轮完整响应 JSON（Iteration 2）
+
+以下为 **第 2 轮** API 返回的完整响应。此时 `messages` 已包含第 1 轮的 3 条 `tool` 结果，模型根据换算值调用 `calculate` 计算平均值：
+
+```json
+{
+  "id": "021782265761034cbbef0300aace80be9f76027bd9c819d3e9dfe",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "",
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": [
+          {
+            "id": "call_c45osor3rgoig8nwbwpbclfg",
+            "function": {
+              "arguments": "{\"expression\": \"(920 + 790 + 149500)/3\"}",
+              "name": "calculate"
+            },
+            "type": "function"
+          }
+        ],
+        "reasoning_content": "The three converted currency values have already been obtained, and the next step is to calculate their average.The calculation expression has been confirmed, and the calculation tool will be called next to get the average result.\n",
+        "encrypted_content": "djHR7S9JP5cZTsJQiOVd7vPeeKZqneKqZzvkqExaWuhzu0QUlI5qsGhm8ShtDM4Q/SlQ1K/ri3ye8Mz4XR0maQl+CZqoXCE8gPfWhmWRfX0lAq5muzbGKN0N6kc6BrKOlEII+/TjJOLYc2bkiF73biwHQmauC+BQgGhWOzIktxkPlW8swPCegKNhZBe13YTSoD5forJkhwlh4xZoi1t6BZJQ1/RfniiZaEg+m3FXzqZ2bnHZWjkl6OTzbc0/y7iKH3md0lT9TOqqsCHYH/pcQZVA9KVP14pMyZih6HfoCtwXMOmz+49lAwkkMWrW2/JuspdC63lOySH6KwZrlhh9CaSN4EDZE77JZs1olo+jP/lL+wAf48Qdd3QRYDYiOCPcGz2bh7F1GSMlLF1LcrPIBFAwpfcjm44wjz+tj1I29eAemAxE8MleRrEd01ja"
+      }
+    }
+  ],
+  "created": 1782265766,
+  "model": "doubao-seed-2-0-lite-260428",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": "default",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 174,
+    "prompt_tokens": 1290,
+    "total_tokens": 1464,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 125,
+      "rejected_prediction_tokens": null
+    },
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 0
+    }
+  }
+}
+```
+
+要点：
+
+- `prompt_tokens` 从第 1 轮的 617 增至 **1290**（历史 `messages` 已包含 3 条 tool 结果）
+- `tool_calls` 仅 1 个，调用 `calculate`，表达式为 `(920 + 790 + 149500)/3`
+- 本地执行后返回 `result: 50403.333...`，再写回一条 `role: "tool"` 消息，进入第 3 轮
+
+### 第三轮完整响应 JSON（Iteration 3）
+
+以下为 **第 3 轮** API 返回的完整响应。此时 `messages` 已包含全部工具调用历史，模型不再调用工具，直接输出最终答案：
+
+```json
+{
+  "id": "0217822661727608de218602406b4cab85da53782ff803c80bfc5",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "Final conversion results for 1000 USD:\n- Converted to EUR: 920.0 EUR\n- Converted to GBP: 790.0 GBP\n- Converted to JPY: 149500.0 JPY\n\nThe calculated average of the three converted values is ~50403.33.\n\nFINAL ANSWER: 1000 USD = 920 EUR, 790 GBP, 149500 JPY, with an average of 50403.33 (of the summed converted values).",
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": null,
+        "reasoning_content": "I'm compiling results, 1000 USD converts to 920 EUR, 790 GBP, 149500 JPY.The average of the three converted currency values has been verified to be approximately 50403.33, and the final result is ready for presentation.\n",
+        "encrypted_content": "djGW34//eTzTlBkVDI/1ifmztkkfdnb4QNY5veAJTXLcZzGP0GK+c/QBwLMFLa079LImflAaAQrAhpzhkRJ+qx7cFhvxISK7x6bTik4KGJrqcp9vSB1Vqx8QkQzlaETqbf5ZvkxpC4f8lsxBe/QO/nzW/1UnIjNgDTua3Ust6NVQ138bNPGhBt2vUNgbwW9re0tu2IBfrY4CNuHwDwO0F2QMBpJMaVyovYTjJHVnnGKuAFrliRrTJiFDi6wuvqe17Imk4C6eoXP1iV80oTeoefWGwZ3aVlV4aeZX+92SVSQsK8I4pCF3w+g79RaJ20SxOwvYRPJEKl15h6z/HG7ME2/a3aj0RIFjLCW9KXDSofzwOBxtUn2dJzCIujiPptdnCdDUvQ9UYvRvWZAUhGvUYp486zS1tyCvfzRJNaJryB6Nwwh0Nf4R2JxQXagCTJ5LL2JKNvrqcsvXPTlqFgE7X4NnhvSDnfmiZA=="
+      }
+    }
+  ],
+  "created": 1782266178,
+  "model": "doubao-seed-2-0-lite-260428",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": "default",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 270,
+    "prompt_tokens": 1443,
+    "total_tokens": 1713,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": null,
+      "audio_tokens": null,
+      "reasoning_tokens": 133,
+      "rejected_prediction_tokens": null
+    },
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 0
+    }
+  }
+}
+```
+
+要点：
+
+- `finish_reason` 为 **`"stop"`**（不再是 `"tool_calls"`），任务结束
+- `tool_calls` 为 **`null`**，不再调用工具
+- `message.content` 含完整总结及 **`FINAL ANSWER:`** 标记；`agent.py` 据此判定成功并退出循环
+- `prompt_tokens` 进一步增至 **1443**（历史含 4 条 tool 结果）
+
+三轮 `prompt_tokens` 变化：`617` → `1290` → `1443`，体现 Chat API 每轮携带完整历史的特征。
 
 ### PyCharm 调试：为何看不到 `reasoning_content`？
 
@@ -240,7 +362,7 @@ for tool_call in message.tool_calls:
 
 | # | id（示例） | name | arguments |
 |---|-----------|------|-----------|
-| 4 | `call_1jvh3f...` | `calculate` | `"(920 + 790 + 149500) / 3"` |
+| 4 | `call_c45osor...` | `calculate` | `"(920 + 790 + 149500)/3"` |
 
 工具返回 `result: 50403.333...`，再写回一条 `role: "tool"` 消息。
 
