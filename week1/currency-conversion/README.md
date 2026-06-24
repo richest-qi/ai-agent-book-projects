@@ -409,13 +409,48 @@ second = client.responses.create(
 
 本工程选用 Chat API，是因为工具调用（function calling）需要显式地在 `messages` 中往返 `tool_calls` 与 `tool` 结果，便于学习和调试完整 Agent 轨迹。
 
-## 与 week1/context 的区别
+### 对话历史（上下文）如何维护
 
-| | `week1/context` | 本工程 |
-|---|---|---|
-| 入口 | 交互式 REPL | `python main.py` 直接跑完 |
-| 任务 | 5 个 sample + 消融实验 | 仅货币换算任务 |
-| 工具 | PDF、code_interpreter 等 | `convert_currency`、`calculate` |
-| 依赖 | 较多 | 仅 `openai`、`python-dotenv` |
+`agent.py` 中 `messages` 与 `conversation_history` 指向同一列表，每轮 API 调用后**只追加、不删除**，这就是 Chat API 下的上下文管理。
 
-代码为独立副本，修改 `week1/context` 不会影响本目录。
+**初始化**（`__init__` + `execute_task` 开头）：
+
+```python
+# __init__：系统提示
+conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+# execute_task：用户任务
+conversation_history.append({"role": "user", "content": task})
+```
+
+**循环中追加**（模型响应 → 工具执行 → 写回结果）：
+
+| 步骤 | 代码 | 写入的 message |
+|------|------|----------------|
+| 模型返回 tool_calls | `messages.append(message.model_dump())` | `{role: "assistant", tool_calls: [...], content: "", ...}` |
+| 每个工具执行完 | `messages.append({role: "tool", ...})` | `{role: "tool", tool_call_id: "call_xxx", content: "{...结果 JSON...}"}` |
+| 模型返回 FINAL ANSWER | `messages.append(message.model_dump())` | `{role: "assistant", content: "...FINAL ANSWER:...", tool_calls: null}` |
+
+本例跑完后，`messages` 结构等价于：
+
+```python
+messages = [
+    {"role": "system", "content": "..."},           # 初始化
+    {"role": "user", "content": "Convert $1000..."}, # 用户任务
+    {"role": "assistant", "tool_calls": [...]},    # 第 1 轮 model_dump()
+    {"role": "tool", "tool_call_id": "...", "content": "..."},  # ×3
+    {"role": "tool", "tool_call_id": "...", "content": "..."},
+    {"role": "tool", "tool_call_id": "...", "content": "..."},
+    {"role": "assistant", "tool_calls": [...]},    # 第 2 轮 model_dump()
+    {"role": "tool", "tool_call_id": "...", "content": "..."},  # ×1
+    {"role": "assistant", "content": "...FINAL ANSWER:..."},    # 第 3 轮 model_dump()
+]
+```
+
+要点：
+
+- **assistant 消息**来自 `message.model_dump()`，保留模型返回的完整结构（含 `tool_calls` 或最终 `content`）
+- **tool 消息**由代码手动构造，`tool_call_id` 必须与上一条 assistant 里 `tool_calls[i].id` 一一对应
+- 每发起下一轮 API 请求时，把整个 `messages` 数组原样传入 → `prompt_tokens` 随历史增长（617 → 1290 → 1443）
+
+这就是本工程的上下文管理：**本地维护完整对话轨迹，Chat API 无状态，历史全靠 `messages` 携带。**
