@@ -188,14 +188,3 @@ second = client.responses.create(
 ```
 
 本工程选用 Chat API，是因为工具调用（function calling）需要显式地在 `messages` 中往返 `tool_calls` 与 `tool` 结果，便于学习和调试完整 Agent 轨迹。
-
-## 与 week1/context 的区别
-
-| | `week1/context` | 本工程 |
-|---|---|---|
-| 入口 | 交互式 REPL | `python main.py` 直接跑完 |
-| 任务 | 5 个 sample + 消融实验 | 仅货币换算任务 |
-| 工具 | PDF、code_interpreter 等 | `convert_currency`、`calculate` |
-| 依赖 | 较多 | 仅 `openai`、`python-dotenv` |
-
-代码为独立副本，修改 `week1/context` 不会影响本目录。
