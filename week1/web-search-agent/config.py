@@ -16,8 +16,8 @@ class Config:
     
     KIMI_BASE_URL: str = "https://api.moonshot.cn/v1"
     
-    # 模型配置
-    DEFAULT_MODEL: str = "kimi-k2-0905-preview"  # 使用最新的 K2 模型
+    # 模型配置（kimi-k2 系列已于 2026-05-25 下线，可通过 DEFAULT_MODEL 覆盖）
+    DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "kimi-k2.5")
     
     # 搜索配置
     MAX_SEARCH_ITERATIONS: int = 3  # 最大搜索迭代次数

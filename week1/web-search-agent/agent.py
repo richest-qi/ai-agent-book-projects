@@ -10,6 +10,8 @@ from openai.types.chat.chat_completion import Choice
 import logging
 import os
 
+from config import Config
+
 # 设置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -55,9 +57,9 @@ class WebSearchAgent:
             api_key=api_key,
             base_url=base_url
         )
-        self.model = "kimi-k2-0905-preview"
+        self.model = Config.DEFAULT_MODEL
         self.conversation_history = []
-        self.temperature = 0.6
+        self.temperature = 1.0  # kimi-k2.5 仅支持 temperature=1
         
     def _get_tools(self) -> List[Dict[str, Any]]:
         """
@@ -91,6 +93,23 @@ class WebSearchAgent:
 - 答案要结构清晰，有理有据
 """
     
+    def _assistant_message_to_dict(self, message) -> Dict[str, Any]:
+        """将 SDK 返回的 assistant message 转为普通 dict，保留 builtin_function 类型。"""
+        msg: Dict[str, Any] = {"role": "assistant", "content": message.content}
+        if message.tool_calls:
+            msg["tool_calls"] = [
+                {
+                    "id": tool_call.id,
+                    "type": tool_call.type,
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments,
+                    },
+                }
+                for tool_call in message.tool_calls
+            ]
+        return msg
+
     def _chat(self, messages: List[Dict[str, Any]]) -> Choice:
         """
         调用 Kimi API 进行对话
@@ -147,8 +166,8 @@ class WebSearchAgent:
                     # 处理工具调用
                     logger.info(f"模型请求调用 {len(choice.message.tool_calls)} 个工具")
                     
-                    # 添加助手的消息（包含工具调用）到历史
-                    self.conversation_history.append(choice.message)
+                    # 转为 dict 再追加，避免 SDK 序列化 builtin_function 时触发 Pydantic 警告
+                    self.conversation_history.append(self._assistant_message_to_dict(choice.message))
                     
                     # 执行每个工具调用
                     for tool_call in choice.message.tool_calls:
