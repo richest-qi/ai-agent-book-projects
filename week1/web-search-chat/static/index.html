@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Search Chat</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-text">
+        <h1>Web Search Chat</h1>
+        <p>Kimi 联网搜索问答 · FastAPI + 原生页面</p>
+      </div>
+      <button type="button" id="clear-btn" class="btn-secondary" title="清空对话">新对话</button>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite">
+      <div class="message assistant welcome">
+        <div class="avatar">K</div>
+        <div class="bubble">
+          你好，我是联网搜索助手。输入问题后我会搜索网络并回答，支持多轮追问。
+        </div>
+      </div>
+    </main>
+
+    <footer class="composer">
+      <form id="chat-form" class="composer-form">
+        <textarea
+          id="user-input"
+          rows="1"
+          placeholder="输入你的问题，按 Enter 发送，Shift+Enter 换行"
+          autocomplete="off"
+        ></textarea>
+        <button type="submit" id="send-btn" class="btn-primary">发送</button>
+      </form>
+      <p class="hint">示例：2024年诺贝尔物理学奖获得者是谁？</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
