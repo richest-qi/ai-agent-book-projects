@@ -15,7 +15,7 @@ class Config:
 
     DEFAULT_TEMPERATURE: float = float(os.getenv("DEFAULT_TEMPERATURE", "0.3"))
     DEFAULT_MAX_TOKENS: int = int(os.getenv("DEFAULT_MAX_TOKENS", "16000"))
-    REASONING_EFFORT: str = os.getenv("REASONING_EFFORT", "medium")
+    REASONING_EFFORT: str = os.getenv("REASONING_EFFORT", "low")
     WEB_SEARCH_MAX_RESULTS: int = int(os.getenv("WEB_SEARCH_MAX_RESULTS", "5"))
 
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
