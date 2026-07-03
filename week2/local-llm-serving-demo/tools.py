@@ -346,10 +346,10 @@ class ToolRegistry:
                 result["location"] = resolved_location
             return result
         except Exception as e:
-            # Fallback to UTC if timezone not found
+            # Fallback to UTC (stdlib timezone works without tzdata on Windows)
             try:
-                tz_utc = ZoneInfo("UTC")
-                current_time = datetime.now(tz_utc)
+                from datetime import timezone as dt_timezone
+                current_time = datetime.now(dt_timezone.utc)
                 return {
                     "timezone": "UTC",
                     "datetime": current_time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -358,14 +358,17 @@ class ToolRegistry:
                     "day_of_week": current_time.strftime("%A"),
                     "utc_offset": "+0000",
                     "timestamp": current_time.isoformat(),
-                    "note": f"Invalid timezone '{timezone}', using UTC as fallback"
+                    "note": (
+                        f"Timezone '{tz_name}' unavailable "
+                        f"(install tzdata on Windows); using UTC as fallback"
+                    ),
                 }
             except Exception as fallback_error:
                 return {
                     "error": str(e),
                     "fallback_error": str(fallback_error),
-                    "timezone": timezone,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timezone": tz_name,
+                    "timestamp": datetime.now().isoformat(),
                 }
     
     @staticmethod
