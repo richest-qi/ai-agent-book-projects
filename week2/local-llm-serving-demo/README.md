@@ -42,6 +42,8 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Windows 上 `get_current_time` 依赖 IANA 时区库，请确保已安装 `tzdata`（已写入 `requirements.txt`）。
+
 默认任务（温哥华当前时间与天气）：
 
 > What's the current time and weather like in Vancouver right now?
@@ -65,6 +67,192 @@ python main.py
 - `get_current_time` — 时区时间
 - `convert_currency` — 货币换算
 - `code_interpreter` — Python 代码执行
+
+## Agent 执行流程与调试要点
+
+与 [`week1/web-search-demo`](../../week1/web-search-demo) 相同：任务入口在 `execute_task()` 里**一次性**初始化 `messages`（`system` + `user`），循环内只追加 `assistant` / `tool`。
+
+温哥华时间+天气题，正常一次运行会有 **2 次** `POST /api/chat`：
+
+| 次序 | 作用 |
+|------|------|
+| 第 1 次 | 模型返回 `tool_calls`（如 `get_current_time`、`get_current_temperature`） |
+| 中间 | **无 HTTP** — Python 在本地执行 `tools.py` |
+| 第 2 次 | 模型根据 `role: tool` 结果生成最终自然语言答案 |
+
+控制台里的 `🔧 Tool Calls` / `✓` **不是 Ollama 打印的**，而是 `main.py` 根据 `ollama_native.py` 发出的 chunk 展示的。
+
+### 消息初始化（对齐 week1 demo）
+
+```python
+# ollama_native.execute_task()
+self.conversation_history = [
+    {"role": "system", "content": "..."},
+    {"role": "user", "content": task},
+]
+```
+
+### Generator 与 yield 入门
+
+流式模式依赖 Python 的 **generator（生成器）**。若不熟悉，可先读本节，再看下一节的执行顺序图。
+
+#### 普通函数 vs 生成器函数
+
+普通函数一次性跑完并 `return`：
+
+```python
+def normal():
+    print("A")
+    print("B")
+    return "结束"   # 函数结束，无法再回到中间
+
+normal()  # 连续输出 A、B
+```
+
+带 `yield` 的函数是 **生成器函数**，调用后得到 generator 对象，**不会立刻执行完函数体**：
+
+```python
+def stream_events():
+    print("步骤1：请求模型")
+    yield {"type": "tool_call", "name": "get_current_time"}  # 暂停，交出结果
+    print("步骤2：执行工具")
+    yield {"type": "tool_result", "content": "..."}            # 再暂停
+    print("步骤3：完成")
+
+gen = stream_events()  # 此时还不会打印「步骤1」
+```
+
+#### `yield` 是什么意思？
+
+`yield` = **在这里停一下，把当前值交给外面；等外面处理完再来，从下一行继续执行**。
+
+`main.py` 用 `for` 循环「消费」generator：
+
+```python
+for chunk in agent.execute_task(task, stream=True):
+    print(chunk)   # 每收到一个 yield 出来的 chunk，处理一次
+```
+
+可运行的最小示例（帮助理解「先打印、后执行工具」的现象）。完整文件见 [`generator_demo.py`](generator_demo.py)：
+
+```python
+def demo():
+    print("  [agent] 开始")
+    yield {"type": "tool_call", "name": "get_time"}
+    print("  [agent] 执行工具中...")
+    yield {"type": "tool_result", "data": "19:32"}
+    print("  [agent] 结束")
+
+for chunk in demo():
+    print(f"[main] 收到: {chunk}")
+```
+
+输出顺序：
+
+```text
+  [agent] 开始
+[main] 收到: {'type': 'tool_call', 'name': 'get_time'}
+  [agent] 执行工具中...          ← 在第一次「收到」之后才执行
+[main] 收到: {'type': 'tool_result', 'data': '19:32'}
+  [agent] 结束
+
+[main] 全部结束
+```
+
+运行：
+
+```bash
+python generator_demo.py
+```
+
+#### 为什么要用 generator？
+
+| 方式 | 行为 |
+|------|------|
+| `return` 整个列表 | 全部做完后一次性返回 |
+| `yield` 逐个产出 | 每完成一小步就交给 `main.py` 打印 |
+
+本 demo 需要分阶段展示：`tool_call` → `tool_result` → 最终 `content`，因此用 generator 在**不同时刻**把事件送给 `main.py`。
+
+#### 与本项目的对应关系
+
+| 概念 | 本项目中的位置 |
+|------|----------------|
+| 生成器函数 | `execute_task(..., stream=True)` → `_react_stream()` |
+| `for chunk in ...` | `main.py` 第 63 行起 |
+| `yield tool_call` | `ollama_native.py` 解析到 `tool_calls` 后 |
+| `yield` 下一行 | `execute_tool(...)` 真正调用 `tools.py` |
+| `yield content` | 第 2 轮 API 的最终答案 |
+
+### 流式模式下的执行顺序（结合 generator）
+
+`execute_task(..., stream=True)` 返回 generator。每次 `yield` 会暂停 `ollama_native.py`，把控制权交回 `main.py` 的 `for chunk in ...`；`main.py` 处理完当前 chunk 后，for 循环进入下一轮，generator 从 `yield` **下一行**继续执行。
+
+因此调试时常见顺序如下（每个工具都类似）：
+
+```text
+main.py          for chunk in execute_task(...)
+                       ↓
+ollama_native    client.chat(stream=True)     ← 第 1 次 POST
+                       ↓ 流式 chunk 中出现 tool_calls
+ollama_native    yield {"type": "tool_call"}  ← 暂停，尚未执行工具
+                       ↓
+main.py          打印  🔧 Tool Calls: → get_current_time: {...}
+                       ↓ for 循环继续 = 恢复 generator
+ollama_native    execute_tool(...)            ← 真正调用 tools.py
+ollama_native    yield {"type": "tool_result"}
+                       ↓
+main.py          打印  ✓ {"timezone": "America/Vancouver", ...}
+```
+
+`get_current_temperature` 重复上述模式。两个工具都完成后，`conversation_history` 中已有 `tool` 消息，进入 **第 2 轮** API：
+
+```text
+ollama_native    client.chat(stream=True)     ← 第 2 次 POST
+ollama_native    yield {"type": "content", ...}
+main.py          打印  🤖 Assistant: ...
+```
+
+**要点**：`yield tool_call` 只表示「模型决定要调工具」；`execute_tool` 在**下一次**恢复 generator 时才运行。先看到 `main.py` 打印、再进入 `tools.py`，是 generator 的正常行为，不是 bug。
+
+### chunk 类型对照
+
+| `chunk["type"]` | 产生位置 | `main.py` 表现 |
+|-----------------|----------|----------------|
+| `tool_call` | 解析 Ollama 响应中的 `message.tool_calls` | `🔧 Tool Calls:` + 工具名与参数 |
+| `tool_result` | `tools.py` 执行完毕 | `✓` + JSON 结果 |
+| `content` | 第 2 轮 API 的流式文本 | `🤖 Assistant:` + 最终答案 |
+| `thinking` | 模型思考片段（若有） | 灰色 `🧠 Thinking:` |
+
+`tool_call` chunk 示例：
+
+```python
+{
+    "type": "tool_call",
+    "content": {
+        "name": "get_current_time",
+        "arguments": {"location": "Vancouver, Canada"},
+    },
+}
+```
+
+### 调试建议
+
+| 想看什么 | 建议断点 |
+|----------|----------|
+| 模型是否返回 `tool_calls` | `ollama_native.py` 中 `'tool_calls' in message_chunk` |
+| 本地工具是否执行 | `tool_registry.execute_tool(...)` 或 `tools.py` 内具体函数 |
+| 控制台为何先打印再执行 | `main.py` 的 `elif chunk_type == "tool_call"`（generator 在 yield 处暂停） |
+
+若只有 **1 次** POST、没有 `🔧 Tool Calls`，说明 `qwen3:0.6b` 本轮未走工具分支，直接编造了答案（小模型偶发）。日志里出现 `Executing tool:` 且 `✓` 中含 `Open-Meteo` / `America/Vancouver` 等字段，可确认工具已真实执行。
+
+### 与 week1 demo 的差异
+
+| | `web-search-demo` | 本项目 |
+|--|-------------------|--------|
+| 工具执行方 | Kimi 服务端（`$web_search`） | 本地 `tools.py` |
+| 模型发起工具 | `finish_reason: tool_calls` | `message.tool_calls` |
+| 展示层 | 日志 | `main.py` 解析 chunk 打印 |
 
 ## 与 `local_llm_serving` 的关系
 
