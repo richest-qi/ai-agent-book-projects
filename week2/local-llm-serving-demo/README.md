@@ -6,8 +6,33 @@
 
 ## 前置条件
 
-1. 安装并启动 Ollama：`ollama serve`
-2. 拉取模型：`ollama pull qwen3:0.6b`
+1. 安装 [Ollama](https://ollama.com)
+2. 启动服务并拉取默认模型：
+
+```cmd
+ollama serve
+ollama pull qwen3:0.6b
+```
+
+### Ollama 常用命令
+
+`<model>` 为模型名，本项目默认 `qwen3:0.6b`。
+
+| 命令 | 作用 |
+|------|------|
+| `ollama list` | 查看已安装模型 |
+| `ollama pull <model>` | 下载模型 |
+| `ollama run <model>` | 交互测试（`/bye` 退出） |
+| `ollama stop <model>` | 从内存卸载模型，释放显存（不删磁盘文件） |
+| `ollama rm <model>` | 删除本机模型文件 |
+
+### Windows 服务管理
+
+| 命令 | 作用 |
+|------|------|
+| `tasklist \| findstr ollama` | 查看 Ollama 进程，最后一列为 PID |
+| `taskkill /F /PID <pid>` | 结束指定进程（如 `taskkill /F /PID 6012`） |
+| `ollama serve` | 重新启动 Ollama 服务 |
 
 ## 快速开始
 
