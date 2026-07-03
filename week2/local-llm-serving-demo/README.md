@@ -215,6 +215,76 @@ main.py          打印  🤖 Assistant: ...
 
 **要点**：`yield tool_call` 只表示「模型决定要调工具」；`execute_tool` 在**下一次**恢复 generator 时才运行。先看到 `main.py` 打印、再进入 `tools.py`，是 generator 的正常行为，不是 bug。
 
+### `stream=True`、`yield` 与逐字输出（两层 chunk）
+
+调试时容易把两个都叫「chunk」的东西混在一起，其实分两层：
+
+| 层级 | 是什么 | 代码位置 |
+|------|--------|----------|
+| **Ollama HTTP 流** | 模型 `stream=True` 时，网络上一包一包推 JSON，每包 `message.content` 可能只有 `"The"` 或 `" current"` | `for chunk in stream_response`（`ollama_native.py`） |
+| **应用事件** | 你们定义的 `{"type": "tool_call" \| "tool_result" \| "content", ...}` | `yield ...` → `main.py` 的 `for chunk in execute_task(...)` |
+
+#### 第二次 POST：答案如何「一个词一个词」出来
+
+工具执行完后，第 2 轮 `client.chat(stream=True)` 时，模型**不是**先写好整段话再一次返回，而是边生成边推送 token 片段，例如：
+
+```text
+Ollama 第 1 小包:  message.content = "The"
+Ollama 第 2 小包:  message.content = " current"
+Ollama 第 3 小包:  message.content = " time"
+...
+拼成完整句:        "The current time in Vancouver is 01:45, with ..."
+```
+
+（实际是 **token 片段**，不一定是完整英文单词。）
+
+对应代码链路：
+
+```text
+Ollama 推 "The"     →  yield {type:content, content:"The"}     →  print("The", end="", flush=True)
+Ollama 推 " current"→  yield {type:content, content:" current"}→  print(" current", end="", flush=True)
+...
+流结束              →  ''.join(collected_content) 写入 conversation_history
+```
+
+```python
+# ollama_native.py — 每收到 Ollama 一小段就 yield
+yield {"type": "content", "content": content_chunk}
+
+# main.py — 不换行、立刻刷新，所以多片在同一行连成整句
+print(content, end="", flush=True)
+```
+
+#### 整句话是 `yield` 的结果还是 `stream=True` 的结果？
+
+**两者分工不同，共同造成你看到的打字机效果：**
+
+| 环节 | 作用 | 没有它会怎样 |
+|------|------|----------------|
+| **`stream=True`（Ollama API）** | 响应被拆成很多小片 `content` 陆续到达 | 一次 HTTP 返回整句，没有逐 token |
+| **`yield`（Python generator）** | 每收到一小片就立刻交给 `main.py` | 可在内部攒齐再一次性返回，控制台不边收边印 |
+| **`print(..., end="", flush=True)`** | 每片接到就接着上一片打印 | 多片可能不会即时显示在同一行 |
+
+- **「拆成很多小片」** → 主要是 **`stream=True`**
+- **「每来一片就立刻显示」** → **`yield` + `for` 循环 + `print(end="")`**
+- **「语义上是一整句话」** → 模型生成的完整答案；流式只是**传输方式**分段，`join(collected_content)` 也会拼成完整字符串记入 `messages`
+
+#### `STREAM=false` 时
+
+`config.STREAM=false` 时 `main.py` 走 `execute_task(stream=False)`，直接 `print(response)`，更接近 [`web-search-demo`](../../week1/web-search-demo)：**等 Agent 跑完再一次性输出**，不做逐字展示。Agent 多轮调工具逻辑仍可相同，只是展示层不同。
+
+#### 与 `web-search-demo` 为何不用 chunk
+
+| | `web-search-demo` | 本项目（`STREAM=true`） |
+|--|-------------------|-------------------------|
+| 发 API | `completions.create()` **无** `stream=True`，等完整响应 | `client.chat(stream=True)`，token 流式 |
+| Agent 循环 | `while` + `return answer` | 相同思路的 ReAct 循环 |
+| 交给 main | 一个字符串 | `yield` 多个事件（`tool_call` / `tool_result` / `content`） |
+| 工具过程 | `logger.info` | chunk 打印 + 日志 |
+| 最终答案 | 一次性 `print(answer)` | 多片 `content` 连续 `print` 成一行 |
+
+**Agent 大脑一样**（初始化 messages → tool_calls → 执行工具 → 再问模型）；差别在是否流式 API、是否用 generator 把中间步骤实时展示给用户。
+
 ### chunk 类型对照
 
 | `chunk["type"]` | 产生位置 | `main.py` 表现 |
@@ -252,7 +322,8 @@ main.py          打印  🤖 Assistant: ...
 |--|-------------------|--------|
 | 工具执行方 | Kimi 服务端（`$web_search`） | 本地 `tools.py` |
 | 模型发起工具 | `finish_reason: tool_calls` | `message.tool_calls` |
-| 展示层 | 日志 | `main.py` 解析 chunk 打印 |
+| API 流式 | 否（一次拿完整响应） | 是（`stream=True`，见上一节） |
+| 展示层 | 日志 + 最终 `print(answer)` | `yield` chunk + `main.py` 流式打印 |
 
 ## 与 `local_llm_serving` 的关系
 
@@ -270,6 +341,7 @@ local-llm-serving-demo/
 ├── config.py         # 模型与固定任务
 ├── ollama_native.py  # Ollama 工具调用 Agent
 ├── tools.py          # 工具注册与实现
+├── generator_demo.py # generator/yield 最小示例
 ├── requirements.txt
 └── env.example
 ```
