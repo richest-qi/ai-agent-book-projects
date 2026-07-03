@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run fixed ASEAN capitals distance task. Config from .env only."""
 
+import json
 import logging
 import sys
 
@@ -29,7 +30,7 @@ def main():
         model=Config.MODEL_NAME,
     )
 
-    result = agent.process_request(
+    result = agent.execute_task(
         TASK,
         use_tools=True,
         temperature=Config.DEFAULT_TEMPERATURE,
@@ -40,18 +41,29 @@ def main():
     print("\n" + "=" * 50)
     print("RESULT")
     print("=" * 50)
+    print("Success:", result.get("success", False))
+    print("Iterations:", result.get("iterations", 0))
+    print("Explicit tool calls:", len(result["trajectory"].tool_calls))
 
-    if result["success"]:
-        print(result["response"])
-        usage = result.get("usage") or {}
-        total = usage.get("total_tokens")
-        if total:
-            print("\n" + "-" * 50)
-            print(f"Tokens used: {total}")
-    else:
-        print("Error:", result.get("error", "Unknown error"))
+    for i, tc in enumerate(result["trajectory"].tool_calls, 1):
+        print(f"  {i}. {tc.tool_name} -> {tc.result}")
 
+    if result.get("final_answer"):
+        print("\nAnswer:")
+        print(result["final_answer"])
+    if result.get("error"):
+        print("\nError:", result["error"])
+
+    usage = result.get("usage") or {}
+    if usage.get("total_tokens"):
+        print("\nTokens used:", usage["total_tokens"])
+
+    print("\n" + "=" * 50)
+    print("MESSAGES")
     print("=" * 50)
+    print(json.dumps(result.get("messages", []), indent=2, ensure_ascii=False))
+    print("=" * 50)
+
     sys.exit(0 if result.get("success") else 1)
 
 

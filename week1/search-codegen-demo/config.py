@@ -17,6 +17,7 @@ class Config:
     DEFAULT_MAX_TOKENS: int = int(os.getenv("DEFAULT_MAX_TOKENS", "16000"))
     REASONING_EFFORT: str = os.getenv("REASONING_EFFORT", "low")
     WEB_SEARCH_MAX_RESULTS: int = int(os.getenv("WEB_SEARCH_MAX_RESULTS", "5"))
+    MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "10"))
 
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
