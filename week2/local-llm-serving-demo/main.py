@@ -60,7 +60,9 @@ def run_task(agent: OllamaNativeAgent, task: str, stream: bool = True) -> int:
             response_started = False
             last_chunk_type = None
 
-            for chunk in agent.chat(task, stream=True, temperature=DEFAULT_TEMPERATURE):
+            for chunk in agent.execute_task(
+                task, stream=True, temperature=DEFAULT_TEMPERATURE
+            ):
                 chunk_type = chunk.get("type")
                 content = chunk.get("content", "")
 
@@ -105,7 +107,9 @@ def run_task(agent: OllamaNativeAgent, task: str, stream: bool = True) -> int:
             return 0
 
         print("\n⏳ Processing...")
-        response = agent.chat(task, stream=False, temperature=DEFAULT_TEMPERATURE)
+        response = agent.execute_task(
+            task, stream=False, temperature=DEFAULT_TEMPERATURE
+        )
         print("\n✅ Response:")
         print("-" * 40)
         print(response)

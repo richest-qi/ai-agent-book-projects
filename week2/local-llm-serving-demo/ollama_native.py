@@ -40,7 +40,36 @@ class OllamaNativeAgent:
             # Ollama expects the same format as OpenAI
             tools.append(tool_def)
         return tools
-    
+
+    def _get_system_prompt(self) -> str:
+        return (
+            "You are a helpful assistant with access to tools. "
+            "Use the provided tools when needed to answer accurately."
+        )
+
+    def execute_task(
+        self,
+        task: str,
+        use_tools: bool = True,
+        stream: bool = False,
+        temperature: float = 0.7,
+    ):
+        """
+        Run one fixed task (same pattern as web-search-demo / search-codegen-demo).
+
+        Initialize messages once at task entry; the ReAct loop only appends
+        assistant / tool messages afterward.
+        """
+        self.conversation_history = [
+            {"role": "system", "content": self._get_system_prompt()},
+            {"role": "user", "content": task},
+        ]
+        logger.info("Task: %s", task)
+
+        if stream:
+            return self._react_stream(use_tools, temperature)
+        return self._react_non_stream(use_tools, temperature)
+
     def chat(self, message: str, use_tools: bool = True, 
              temperature: float = 0.7, stream: bool = False) -> str:
         """
@@ -55,17 +84,11 @@ class OllamaNativeAgent:
         Returns:
             Final response from the model (or generator if streaming)
         """
+        # Multi-turn interactive: append one user turn per call
+        self.conversation_history.append({"role": "user", "content": message})
         if stream:
-            return self.chat_stream(message, use_tools, temperature)
+            return self._react_stream(use_tools, temperature)
         
-        # Original non-streaming implementation continues below...
-        # Add user message to history
-        self.conversation_history.append({
-            "role": "user",
-            "content": message
-        })
-        
-        # Prepare tools if enabled
         tools = self._convert_tools_to_ollama_format() if use_tools else None
         
         try:
@@ -151,22 +174,11 @@ class OllamaNativeAgent:
             logger.error(f"Error in chat: {e}")
             return f"Error: {e}"
     
-    def chat_stream(self, message: str, use_tools: bool = True,
-                    temperature: float = 0.7):
+    def _react_stream(self, use_tools: bool, temperature: float):
         """
-        Stream a message to the model and handle tool calls in a ReAct loop
-        
-        Yields chunks that include:
-        - type: 'thinking', 'tool_call', 'tool_result', 'content'
-        - content: The actual content
+        Stream one turn and handle tool calls in a ReAct loop.
+        User message must already be in conversation_history.
         """
-        # Add user message to history
-        self.conversation_history.append({
-            "role": "user",
-            "content": message
-        })
-        
-        # Prepare tools if enabled
         tools = self._convert_tools_to_ollama_format() if use_tools else None
         
         # ReAct loop - keep going until no more tool calls are needed
@@ -311,6 +323,11 @@ class OllamaNativeAgent:
         # Check if we hit max iterations
         if iteration >= max_iterations:
             yield {"type": "error", "content": "Maximum iterations reached in ReAct loop"}
+
+    def chat_stream(self, message: str, use_tools: bool = True,
+                    temperature: float = 0.7):
+        """Multi-turn streaming chat; for fixed tasks use execute_task()."""
+        return self.chat(message, use_tools=use_tools, temperature=temperature, stream=True)
     
     def reset_conversation(self):
         """Reset the conversation history"""
