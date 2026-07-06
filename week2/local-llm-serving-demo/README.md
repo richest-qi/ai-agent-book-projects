@@ -4,6 +4,16 @@
 
 与父项目的交互模式不同：运行 `python main.py` 即执行固定任务，无需 CMD 输入。
 
+本项目为 **模式 A**（API `stream=True` + Python `yield` + 逐字打印）。同目录下还有两个独立兄弟项目，便于对比展示策略：
+
+| 模式 | 目录 | Ollama API | 展示 |
+|------|------|------------|------|
+| **A（本项目）** | `local-llm-serving-demo` | `stream=True` | `yield` + `print(end="")` 打字机 |
+| B | [`local-llm-serving-demo-buffer`](../local-llm-serving-demo-buffer) | `stream=True` | 内存缓冲，整段一次打印 |
+| C | [`local-llm-serving-demo-blocking`](../local-llm-serving-demo-blocking) | `stream=False` | 阻塞响应，整段一次打印（近 `web-search-demo`） |
+
+Agent 工具调用逻辑相同；差别仅在 API 是否流式、以及 `main.py` 如何展示结果。
+
 ## 前置条件
 
 1. 安装 [Ollama](https://ollama.com)
@@ -269,9 +279,14 @@ print(content, end="", flush=True)
 - **「每来一片就立刻显示」** → **`yield` + `for` 循环 + `print(end="")`**
 - **「语义上是一整句话」** → 模型生成的完整答案；流式只是**传输方式**分段，`join(collected_content)` 也会拼成完整字符串记入 `messages`
 
-#### `STREAM=false` 时
+#### 一次性输出（模式 B / C）
 
-`config.STREAM=false` 时 `main.py` 走 `execute_task(stream=False)`，直接 `print(response)`，更接近 [`web-search-demo`](../../week1/web-search-demo)：**等 Agent 跑完再一次性输出**，不做逐字展示。Agent 多轮调工具逻辑仍可相同，只是展示层不同。
+若不需要逐字展示，请使用兄弟项目：
+
+- **模式 B** [`local-llm-serving-demo-buffer`](../local-llm-serving-demo-buffer) — API 仍 `stream=True`，内部缓冲后一次打印
+- **模式 C** [`local-llm-serving-demo-blocking`](../local-llm-serving-demo-blocking) — API `stream=False`，最接近 [`web-search-demo`](../../week1/web-search-demo)
+
+本仓库（模式 A）的 `config.STREAM=false` 路径未单独维护；推荐直接用模式 C。
 
 #### 与 `web-search-demo` 为何不用 chunk
 
