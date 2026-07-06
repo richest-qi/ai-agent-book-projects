@@ -2,6 +2,8 @@
 
 **模式 C**：Ollama API `stream=False`，每次请求等完整响应后再处理；`main.py` 一次性打印答案。展示方式最接近 [`week1/web-search-demo`](../../week1/web-search-demo)。
 
+**定位：调试学习项目** — 默认打印每次阻塞响应的 `thinking` / `tool_calls` / `content` 分解，与模式 B 对照；不需要时设 `DEBUG_RESPONSE=0`。
+
 与 [`../local-llm-serving-demo`](../local-llm-serving-demo)（模式 A）和 [`../local-llm-serving-demo-buffer`](../local-llm-serving-demo-buffer)（模式 B）并列。
 
 ## 三种模式对照
@@ -40,32 +42,29 @@ python main.py
 | `OLLAMA_MODEL` | 模型名 | `qwen3:0.6b` |
 | `TASK` | 固定任务 | 温哥华时间+天气 |
 | `DEFAULT_TEMPERATURE` | 采样温度 | `0.7` |
-| `DEBUG_RESPONSE` | 打印阻塞响应分解（thinking / tool_calls / content） | `0` |
+| `DEBUG_RESPONSE` | 打印阻塞响应分解 | `1`（默认开） |
 
-### 调试阻塞响应过程
+### 调试输出说明
 
-与模式 B 的逐 `chunk` 打印对照，模式 C 每次 POST **一次返回完整 message**。设置：
+与模式 B 的逐 `[chunk]` 对照，模式 C 每次 POST **一次返回完整 message**：
 
-```bash
-# .env 或命令行
-DEBUG_RESPONSE=1
-python main.py
-```
-
-输出示例：
+调试时直接打印 Ollama 返回的原始 JSON（含 `message.thinking`、`tool_calls`、`content` 等字段的真实值）：
 
 ```text
-[response] Iteration 1 — 阻塞响应一次到达（stream=False）
-[response] thinking（共 800 字符，模拟流式切片如下）:
-[thinking] 片段: 'Okay'
-[thinking] 片段: ','
-...
-[response] tool_calls (2):
-         [1] name='get_current_time' arguments={...}
-[response] content: (空)
+[response] iteration=1
+{
+  "model": "qwen3:0.6b",
+  "message": {
+    "role": "assistant",
+    "content": "",
+    "thinking": "Okay, the user is asking...",
+    "tool_calls": [...]
+  },
+  "done": true
+}
 ```
 
-Iteration 2 会看到 `content` 片段；`thinking` / `tool_calls` / `content` 在同一时刻全部可用，与模式 B「多包陆续到达」形成对比。
+Iteration 2 会看到 `content` 片段。安静运行：`DEBUG_RESPONSE=0 python main.py`
 
 ## 执行流程
 

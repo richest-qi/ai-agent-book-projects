@@ -24,77 +24,29 @@ def _get_field(obj: Any, key: str, default: Any = None) -> Any:
     return getattr(obj, key, default)
 
 
-def _format_tool_call_debug(tool_call: Any, index: int) -> str:
-    """One-line summary of a tool_call for debug printing."""
-    tc_id = _get_field(tool_call, "id")
-    function = _get_field(tool_call, "function", {})
-    name = _get_field(function, "name") or _get_field(tool_call, "tool_name")
-    args = _get_field(function, "arguments")
-    if args is None:
-        args = _get_field(tool_call, "arguments")
-
-    if isinstance(args, dict):
-        args_str = json.dumps(args, ensure_ascii=False)
-    elif isinstance(args, str) and args:
-        args_str = args if len(args) <= 120 else args[:120] + "..."
-    elif args:
-        args_str = repr(args)
-    else:
-        args_str = "(无参数)"
-
-    parts = [f"[{index}]"]
-    if tc_id:
-        parts.append(f"id={tc_id!r}")
-    parts.append(f"name={name!r}")
-    parts.append(f"arguments={args_str}")
-    return " ".join(parts)
+def _serialize_for_debug(obj: Any) -> Any:
+    """Convert Ollama/Pydantic response to JSON-serializable dict."""
+    if obj is None:
+        return None
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if isinstance(obj, dict):
+        return obj
+    if isinstance(obj, (list, tuple)):
+        return [_serialize_for_debug(item) for item in obj]
+    return obj
 
 
-def _debug_print_fragments(prefix: str, text: str) -> None:
-    """Split text into stream-like fragments for debug (blocking has full text at once)."""
-    if not text:
-        print(f"[{prefix}] (空)")
-        return
-    for match in re.finditer(r"\s*\S+", text):
-        print(f"[{prefix}] 片段: {match.group(0)!r}")
+def _debug_print_blocking_response(iteration: int, response: Any) -> None:
+    """Print raw blocking API response as returned by Ollama (DEBUG_RESPONSE=1)."""
+    print(f"\n[response] iteration={iteration}")
+    print(json.dumps(_serialize_for_debug(response), ensure_ascii=False, indent=2))
+    print()
 
 
-def _debug_print_blocking_response(
-    iteration: int,
-    response: Any,
-    message: Any,
-) -> None:
-    """Print full blocking response breakdown (set DEBUG_RESPONSE=1)."""
-    thinking = _get_field(message, "thinking") or ""
-    content = _get_field(message, "content") or ""
-    tool_calls = _get_field(message, "tool_calls") or []
-    done = _get_field(response, "done")
-
-    print(f"\n[response] Iteration {iteration} — 阻塞响应一次到达（stream=False）")
-    if done is not None:
-        print(f"[response] done={done}")
-
-    if thinking:
-        print(f"[response] thinking（共 {len(thinking)} 字符，模拟流式切片如下）:")
-        _debug_print_fragments("thinking", thinking)
-    else:
-        print("[response] thinking: (空)")
-
-    if tool_calls:
-        calls = list(tool_calls)
-        print(f"[response] tool_calls ({len(calls)}):")
-        for i, tc in enumerate(calls, 1):
-            print(f"         {_format_tool_call_debug(tc, i)}")
-    else:
-        print("[response] tool_calls: (无)")
-
-    if content:
-        print(f"[response] content（共 {len(content)} 字符，模拟流式切片如下）:")
-        _debug_print_fragments("content", content)
-    else:
-        print("[response] content: (空)")
-
-    print("[response] —— 以上为单次 HTTP 返回的完整 message；模式 B 中同类内容会拆成多包 chunk\n")
+def _print_tool_execution(name: str, args: Dict[str, Any], result: str) -> None:
+    print(f"  → {name}: {args}")
+    print(f"    ✓ {result}")
 
 
 class OllamaNativeAgent:
@@ -171,7 +123,7 @@ class OllamaNativeAgent:
             tool_calls = _get_field(message, "tool_calls") or []
 
             if DEBUG_RESPONSE:
-                _debug_print_blocking_response(iteration, response, message)
+                _debug_print_blocking_response(iteration, response)
 
             if tool_calls:
                 logger.info("Model requested %s tool call(s)", len(tool_calls))
@@ -180,12 +132,14 @@ class OllamaNativeAgent:
                     "content": _get_field(message, "content", "") or "",
                     "tool_calls": tool_calls,
                 })
+                print("🔧 Tool Calls:")
                 for tool_call in tool_calls:
                     function = _get_field(tool_call, "function", {})
                     name = _get_field(function, "name")
                     args = self._parse_tool_args(_get_field(function, "arguments"))
                     logger.info("Executing tool: %s with args: %s", name, args)
                     result = self.tool_registry.execute_tool(name, args)
+                    _print_tool_execution(name, args, result)
                     tool_records.append({
                         "name": name,
                         "arguments": args,

@@ -2,6 +2,8 @@
 
 **模式 B**：Ollama API `stream=True`，在内存中拼齐 token 后再一次性打印；**无** Python `yield`、**无**逐字打字机效果。
 
+**定位：调试学习项目** — 默认打印每个 HTTP chunk（`thinking` / `tool_calls` / `content`），观察流式响应过程；不需要时设 `DEBUG_CHUNKS=0`。
+
 与 [`../local-llm-serving-demo`](../local-llm-serving-demo)（模式 A）和 [`../local-llm-serving-demo-blocking`](../local-llm-serving-demo-blocking)（模式 C）并列，便于对比三种展示策略。
 
 ## 三种模式对照
@@ -44,6 +46,9 @@ python main.py
 | `OLLAMA_MODEL` | 模型名 | `qwen3:0.6b` |
 | `TASK` | 固定任务 | 温哥华时间+天气 |
 | `DEFAULT_TEMPERATURE` | 采样温度 | `0.7` |
+| `DEBUG_CHUNKS` | 打印每个 stream chunk | `1`（默认开） |
+
+安静运行：`DEBUG_CHUNKS=0 python main.py`
 
 ## 执行流程
 

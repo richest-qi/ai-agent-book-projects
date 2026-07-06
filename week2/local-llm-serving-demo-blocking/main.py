@@ -74,12 +74,6 @@ def main() -> int:
         print(f"\n❌ Error: {e}")
         return 1
 
-    if result["tool_records"]:
-        print("🔧 Tool Calls:")
-        for record in result["tool_records"]:
-            print(f"  → {record['name']}: {record['arguments']}")
-            print(f"    ✓ {record['result']}")
-
     print("\n🤖 Assistant:")
     print("-" * 40)
     print(result["answer"])

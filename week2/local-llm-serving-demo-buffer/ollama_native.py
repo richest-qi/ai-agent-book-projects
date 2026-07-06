@@ -9,6 +9,7 @@ import re
 from typing import Any, Dict, List
 
 import ollama
+from config import DEBUG_CHUNKS
 from tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,11 @@ def _merge_tool_calls(accumulated: List[Any], incoming: Any) -> List[Any]:
     return result
 
 
+def _print_tool_execution(name: str, args: Dict[str, Any], result: str) -> None:
+    print(f"  → {name}: {args}")
+    print(f"    ✓ {result}")
+
+
 class OllamaNativeAgent:
     """Agent: API stream=True, display buffered."""
 
@@ -132,6 +138,8 @@ class OllamaNativeAgent:
 
         logger.info("Task: %s", task)
         logger.info("Mode B: Ollama API stream=True, output buffered until complete")
+        if DEBUG_CHUNKS:
+            logger.info("DEBUG_CHUNKS=1: printing each stream chunk")
 
         for iteration in range(1, max_iterations + 1):
             logger.info("Iteration %s/%s", iteration, max_iterations)
@@ -151,23 +159,22 @@ class OllamaNativeAgent:
                 message_chunk = _get_field(chunk, "message")
                 piece = _get_field(message_chunk, "content", "") or ""
                 chunk_tool_calls = _get_field(message_chunk, "tool_calls")
-                # === 调试：看见每一包（DEBUG_CHUNKS=1 时生效，见 env） ===
-                if piece:
-                    print(f"[chunk content] {piece!r}")
-                elif chunk_tool_calls:
-                    _debug_print_tool_calls(chunk_tool_calls)
-                elif _get_field(chunk, "done"):
-                    print("[chunk] 结束包 done=true")
-                else:
-                    thinking = _get_field(message_chunk, "thinking")
-                    tool_name = _get_field(message_chunk, "tool_name")
-                    if thinking:
-                        print(f"[chunk] content 空，thinking 片段: {thinking!r}")
-                    elif tool_name:
-                        print(f"[chunk] content 空，tool_name: {tool_name!r}")
+                if DEBUG_CHUNKS:
+                    if piece:
+                        print(f"[chunk content] {piece!r}")
+                    elif chunk_tool_calls:
+                        _debug_print_tool_calls(chunk_tool_calls)
+                    elif _get_field(chunk, "done"):
+                        print("[chunk] 结束包 done=true")
                     else:
-                        print("[chunk] content 空，等待模型下一 token")
-                # === 上面是调试 ===
+                        thinking = _get_field(message_chunk, "thinking")
+                        tool_name = _get_field(message_chunk, "tool_name")
+                        if thinking:
+                            print(f"[chunk] content 空，thinking 片段: {thinking!r}")
+                        elif tool_name:
+                            print(f"[chunk] content 空，tool_name: {tool_name!r}")
+                        else:
+                            print("[chunk] content 空，等待模型下一 token")
                 if piece:
                     collected.append(piece)
                 if chunk_tool_calls:
@@ -180,12 +187,14 @@ class OllamaNativeAgent:
                     "content": "".join(collected),
                     "tool_calls": tool_calls,
                 })
+                print("🔧 Tool Calls:")
                 for tool_call in tool_calls:
                     function = _get_field(tool_call, "function", {})
                     name = _get_field(function, "name")
                     args = self._parse_tool_args(_get_field(function, "arguments"))
                     logger.info("Executing tool: %s with args: %s", name, args)
                     result = self.tool_registry.execute_tool(name, args)
+                    _print_tool_execution(name, args, result)
                     tool_records.append({
                         "name": name,
                         "arguments": args,
