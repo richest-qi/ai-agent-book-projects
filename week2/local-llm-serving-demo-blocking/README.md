@@ -64,7 +64,17 @@ python main.py
 }
 ```
 
-Iteration 2 会看到 `content` 片段。安静运行：`DEBUG_RESPONSE=0 python main.py`
+| 工具结果 | 每个工具执行后立刻打印 `→` / `✓` | 同左 |
+
+Iteration 2 的 JSON 中 `tool_calls` 为 `null`、`content` 有正文。安静运行：`DEBUG_RESPONSE=0 python main.py`
+
+## `stream=False` 响应与最终判断
+
+与模式 B 共用同一套 Agent 分支（见 [`buffer` README](../local-llm-serving-demo-buffer/README.md)「对照模式 C」），此处仅强调阻塞 API 特点。
+
+每次 `client.chat(stream=False)` 返回**一份完整 JSON**；`done=True` 只表示本轮 HTTP 结束，**不**表示整个任务结束。
+
+**结束条件**：`message.tool_calls` 为空 → `message.content` 为最终答案并 `return`；否则执行工具后 `continue` 下一轮 POST。
 
 ## 执行流程
 
@@ -91,7 +101,7 @@ Agent 核心循环一致：初始化 messages → 模型 tool_calls → 执行�
 
 ```
 local-llm-serving-demo-blocking/
-├── main.py           # 调用 execute_task()，打印 tool_records + answer
+├── main.py           # 调用 execute_task()，打印最终 answer
 ├── config.py
 ├── ollama_native.py  # stream=False，阻塞响应
 ├── tools.py
