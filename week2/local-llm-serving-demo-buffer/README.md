@@ -12,13 +12,15 @@
 |--|---------------------|----------------------|----------------|
 | 目录 | `local-llm-serving-demo` | `local-llm-serving-demo-buffer` | `local-llm-serving-demo-blocking` |
 | Ollama API | `stream=True` | `stream=True` | `stream=False` |
+| HTTP 传输 | 多包 chunk 陆续到达 | 同左 | 一份 JSON 一次返回 |
 | Agent 返回 | `yield` 事件 generator | `dict`（`answer` + `tool_records`） | `dict` |
 | 控制台答案 | 逐 token `print(end="")` | **整段一次 `print`** | 整段一次 `print` |
-| 工具过程 | 实时 chunk 展示 | 执行后立刻 `→` / `✓` | 同左 |
+| 工具结果 | 随 chunk 实时展示 | 执行后立刻 `→` / `✓` | 同左 |
+| 调试前缀 | — | `[chunk]` | `[response]` + 原始 JSON |
 
-**模式 B 与 A 的差别**：HTTP 仍是流式收包，但 `ollama_native.py` 用 `collected` 列表攒齐后再返回，用户看不到边收边印。
+**模式 B 与 A**：API 同为 `stream=True`；A 每片 `yield` 给 `main` 边收边印，B 用 `collected` 缓冲后一次返回。
 
-**模式 B 与 C 的差别**：API 层仍 `stream=True`（包陆续到达），展示层与 C 一样是一次性输出。Agent **结束判断逻辑相同**（见下文「对照模式 C」），差别只在 HTTP 传输形态。
+**模式 B 与 C**：Agent 结束判断相同；差别在 HTTP 是分包还是一次返回。阻塞模式见 [`blocking` README](../local-llm-serving-demo-blocking/README.md)。
 
 ## 前置条件
 
@@ -50,120 +52,227 @@ python main.py
 
 安静运行：`DEBUG_CHUNKS=0 python main.py`
 
-## 执行流程
+---
 
-与模式 A 相同：第 1 次 POST → `tool_calls` → 本地 `tools.py` → 第 2 次 POST → 最终 `content`。
+## `stream=True` 流式响应详解
 
-区别在 **展示层**（模式 B）：
+本节说明模式 B 的核心：Ollama **真实流式 HTTP** 下，每一包 `chunk` 是什么、代码如何处理、如何判断任务结束。
 
-```text
-ollama_native   for chunk in stream_response: collected.append(piece)   ← 只缓冲，不 yield
-ollama_native   return {"answer": "".join(collected), ...}
-main.py         print(result["answer"])                                ← 一次性输出
+### 两层分工
+
+| 层级 | 是什么 | 模式 B 的行为 |
+|------|--------|----------------|
+| **Ollama HTTP 流** | `stream=True` 时，一次 POST 内推很多 JSON 小包 | `for chunk in stream_response` 逐包接收（约 3～5 秒） |
+| **展示层** | `main.py` 如何给用户看 | **不**边收边印；`join(collected)` 后一次性 `print(answer)` |
+
+「拆成很多小片」来自 **`stream=True`**；「最后整段输出」是模式 B 的**刻意选择**（与模式 A 的 `yield` + `print(end="")` 不同）。
+
+### 一轮 POST 内的代码路径
+
+```python
+stream_response = self.client.chat(..., stream=True)  # 返回迭代器，非列表
+
+collected: List[str] = []
+tool_calls: List = []
+
+for chunk in stream_response:                    # 每来一个网络小包，循环一次
+    piece = chunk["message"].get("content", "")
+    if piece:
+        collected.append(piece)                  # 有字就拼进列表（模式 B 不打印）
+    if chunk["message"].get("tool_calls"):
+        tool_calls = _merge_tool_calls(...)      # 工具信息可能分多包，需合并
+
+# for 循环结束 = 本轮 HTTP 流结束
+if tool_calls:
+    execute_tool(...) → continue               # 进入下一轮 POST
+else:
+    answer = "".join(collected)                  # 无工具 → 拼好的 content 即最终答案
+    return {"answer": answer, ...}
 ```
 
-工具结果在 `ollama_native.py` 内每个工具执行后立刻打印 `→` / `✓`（与模式 C 相同）。
+要点：`stream_response` 是**还在路上的管道**，不是已经拼好的完整句子；必须跑完整个 `for` 循环，才能知道本轮是「要调工具」还是「给最终答案」。
 
-## 对照：模式 C（`stream=False`）
+### `message` 里三个字段（qwen3）
 
-与模式 B 并排学习时，重点对比 **HTTP 传输** 与 **结束判断**（后者两者相同）。
+每一包 `chunk["message"]` 可能携带：
 
-| | 模式 B `stream=True` | 模式 C `stream=False` |
-|--|---------------------|----------------------|
-| 每轮 HTTP | 多包 `[chunk]` 陆续到达 | 一份 JSON 一次返回 |
-| 调试前缀 | `[chunk]` / `[response]` | `[response]` + 原始 JSON |
-| 结束判断 | 看 `tool_calls` 是否为空 | 同左 |
+| 字段 | 含义 | 用户最终答案里出现吗 |
+|------|------|----------------------|
+| `thinking` | 模型内部推理（草稿纸） | 否 |
+| `tool_calls` | 要调用的工具名与参数 | 否（由 `tools.py` 执行） |
+| `content` | 给用户看的正文 | 是（Iteration 2） |
 
-### `stream=False` 时响应长什么样
+调试时（`DEBUG_CHUNKS=1`）常见打印：
 
-模式 C 每次 `client.chat(stream=False)` **只发一次 HTTP**，等模型生成完毕后，**整份 JSON 一次返回**。调试时（`DEBUG_RESPONSE=1`，默认开）打印 Ollama 原始响应：
+| 调试行 | 含义 |
+|--------|------|
+| `[chunk] content 空，thinking 片段: ' the'` | 本包没有 `content`，推理 token 在 `thinking` |
+| `[chunk] content 空，但有 tool_calls (1)` + `name=...` | 本包携带工具调用信息 |
+| `[chunk content] 'The'` | 本包有用户可见正文片段 |
+| `[chunk] 结束包 done=true` | 本轮 HTTP 流结束（不等于整个任务结束） |
+
+### 为什么很多包 `content` 为空？
+
+`content` 空**不是**传了无意义数据，而是**这一小包没有新的用户可见文字**。模型可能在：
+
+- 往 `thinking` 写字（Iteration 1 大量此类包）
+- 往 `tool_calls` 拼工具名/参数 JSON
+- 等待下一个 token（`content` 暂时为空）
+
+只有 **Iteration 2 后半段** 才会大量出现 `[chunk content] 'The'`、`' current'` …
+
+### Iteration 1：调工具（典型顺序）
+
+温哥华时间+天气题，第 1 次 POST 内大致经历：
 
 ```text
-[response] iteration=1
-{
-  "model": "qwen3:0.6b",
-  "message": {
-    "role": "assistant",
-    "content": "",
-    "thinking": "Okay, the user is asking...",
-    "tool_calls": [
-      {"function": {"name": "get_current_time", "arguments": {...}}},
-      {"function": {"name": "get_current_temperature", "arguments": {...}}}
-    ]
-  },
-  "done": true
-}
+① thinking 流（60～100+ 包）
+   [chunk] content 空，thinking 片段: 'Okay'
+   [chunk] content 空，thinking 片段: ' the'
+   ...
+   [chunk] content 空，thinking 片段: ' get_current_time'
+
+② tool_calls 流（常 1 工具 1 包，可能 2 包）
+   [chunk] content 空，但有 tool_calls (1)
+            [1] name='get_current_time' arguments={"location": "Vancouver, Canada"}
+   [chunk] content 空，但有 tool_calls (1)
+            [1] name='get_current_temperature' arguments={"location": "Vancouver, Canada"}
+
+③ 结束
+   [chunk] 结束包 done=true
 ```
 
-要点：
-
-| 字段 | Iteration 1（调工具） | Iteration 2（写答案） |
-|------|----------------------|----------------------|
-| `thinking` | 通常有整段推理文字 | 通常有 |
-| `tool_calls` | 数组，含 1～N 个工具 | `null` 或 `[]` |
-| `content` | 常为 `""` | 最终给用户看的正文 |
-| `done` | `true`（仅表示**本轮 HTTP 传完**） | `true` |
-
-与模式 B 不同：**没有** `[chunk]` 逐包过程；`thinking` / `tool_calls` / `content` 在同一时刻全部可用。
-
-工具执行后立刻打印（不等到任务结束）：
+`for` 循环结束后，代码执行工具（立刻打印，不等到任务结束）：
 
 ```text
 🔧 Tool Calls:
   → get_current_time: {'location': 'Vancouver, Canada'}
     ✓ {"timezone": "America/Vancouver", "datetime": "..."}
   → get_current_temperature: {'location': 'Vancouver, Canada'}
-    ✓ {"temperature": 15.9, ...}
+    ✓ {"temperature": 15.6, ...}
 ```
 
-### 如何判断「最终响应」（模式 B / C 相同）
+#### `tool_calls` 分包与 `_merge_tool_calls`
 
-`ollama_native.py` 的 Agent 循环（B、C 共用同一套分支逻辑）：
+Ollama 流式下，多个工具可能**各占一包**，每包 `tool_calls` 长度仅为 1。若用 `tool_calls = chunk_tool_calls` 直接覆盖，会**丢掉前面的工具**（只保留最后一包）。
+
+本项目使用 `_merge_tool_calls()` 按工具名合并，确保两包：
+
+```text
+包1: tool_calls → get_current_time
+包2: tool_calls → get_current_temperature
+```
+
+合并后得到 2 个工具一并执行。
+
+### Iteration 2：写最终答案（典型顺序）
+
+第 2 次 POST 内：
+
+```text
+① thinking 流（模型根据工具结果组织答案）
+   [chunk] content 空，thinking 片段: 'Okay'
+   ...
+
+② content 流（给用户看的正文，token 一片一片来）
+   [chunk content] 'The'
+   [chunk content] ' current'
+   [chunk content] ' time'
+   ...
+   [chunk content] '!'
+
+③ 结束
+   [chunk] 结束包 done=true
+```
+
+模式 B 在 `for` 内只 `collected.append(piece)`，**不打印**；循环结束后 `"".join(collected)` 得到整句，再由 `main.py` 一次性输出：
+
+```text
+🤖 Assistant:
+----------------------------------------
+The current time in Vancouver, Canada is **01:05:16** ...
+----------------------------------------
+```
+
+若开模式 A，同样的 `content` 包会 `yield` 给 `main` 并 `print(end="")`，产生打字机效果。
+
+### 如何判断「最终响应」
+
+**一轮 `for chunk` 跑完后**（不是某个 chunk 到达时）：
+
+| 合并后的 `tool_calls` | 行为 |
+|-----------------------|------|
+| 非空 | 记入 `conversation_history` → 执行工具 → **`continue` 下一轮 POST** |
+| 空 | `"".join(collected)` 为最终答案 → **`return` 结束任务** |
 
 ```python
-tool_calls = message.tool_calls or []
-
 if tool_calls:
-    # 模型还要调工具 → 执行 tools.py → continue 进入下一轮 POST
-    ...
+    ...  # 执行工具
     continue
 
-# 没有 tool_calls → 本轮 content 即为最终答案
-answer = clean_content(message.content)
+answer = self._clean_content("".join(collected))
 return {"success": True, "answer": answer, ...}
 ```
 
-| 本轮 `message.tool_calls` | 行为 |
-|---------------------------|------|
-| 有内容（数组非空） | 执行工具，**继续**下一轮 `client.chat()` |
-| 无（`null` / `[]`） | 取 `message.content` 作为答案，**`return` 结束** |
+注意：
 
-**不是**根据 `done` 判断任务是否结束：`done=True` 只表示这一轮阻塞响应已传完；Iteration 1 也可以是 `done=True` 但仍带 `tool_calls`，必须再 POST 一次。
+- **`done=true` 的 chunk** 只表示**本轮 HTTP 流结束**；Iteration 1 也可以是 `done=true` 但仍带 `tool_calls`，必须再 POST。
+- **结束条件与模式 C 相同**：看合并后的 `tool_calls` 是否为空，不是看 `done`。
+- `thinking` 不参与 `answer` 返回，仅供调试观察。
 
-温哥华时间+天气题正常 **2 次 POST**：
+温哥华题正常 **2 次 POST**：
 
 ```text
-POST #1   tool_calls 有值  → 执行 get_current_time / get_current_temperature
-POST #2   tool_calls 为空  → content 为最终答案 → return
+POST #1   for chunk… → thinking + tool_calls → 执行 2 个工具
+POST #2   for chunk… → thinking + content   → return 最终答案
 ```
 
-若连续 10 轮都有 `tool_calls`、始终没有纯文本结束，返回 `Error: Maximum iterations reached`。
+超过 10 轮仍有 `tool_calls`、始终没有纯 `content` 结束 → `Error: Maximum iterations reached`。
 
-完整阻塞模式说明与源码：[`../local-llm-serving-demo-blocking`](../local-llm-serving-demo-blocking)。
+### 完整时间线（模式 B）
+
+```text
+execute_task()
+│
+├─ Iteration 1 ── POST stream=True ─────────────────────────────
+│    for chunk: thinking 片段 × N
+│    for chunk: tool_calls 包 × 1～2  → _merge_tool_calls
+│    for chunk: done=true
+│    execute_tool × 2（立刻 → / ✓）
+│
+├─ Iteration 2 ── POST stream=True ─────────────────────────────
+│    for chunk: thinking 片段 × M
+│    for chunk: content 片段 × K  → collected.append
+│    for chunk: done=true
+│    return answer = join(collected)
+│
+└─ main.py  print(answer)   ← 用户此时才看到 Assistant 整段
+```
+
+### 与模式 A、模式 C 一句话对比
+
+| | HTTP | `for chunk` 内 | 用户看到答案的时机 |
+|--|------|----------------|-------------------|
+| **A** | `stream=True` | `yield` 每片给 `main` | 边收边印（打字机） |
+| **B** | `stream=True` | `collected.append`，不 yield | `for` 跑完后 `main` 一次打印 |
+| **C** | `stream=False` | 无 `for chunk` | 一次 JSON 到达后处理 |
+
+---
 
 ## 文件结构
 
 ```
 local-llm-serving-demo-buffer/
 ├── main.py           # 调用 execute_task()，打印最终 answer
-├── config.py
-├── ollama_native.py  # stream=True，内存缓冲
+├── config.py         # DEBUG_CHUNKS 等
+├── ollama_native.py  # stream=True，chunk 缓冲 + 调试打印
 ├── tools.py
 ├── requirements.txt
-└── env.example
+├── env.example
+└── response.md       # 一次真实运行的 chunk 日志样例（可选参考）
 ```
 
 ## 延伸阅读
 
 - 模式 A 的 generator / yield 详解：[`../local-llm-serving-demo/README.md`](../local-llm-serving-demo/README.md)
-- 与 `web-search-demo` 最接近的阻塞模式：[`../local-llm-serving-demo-blocking`](../local-llm-serving-demo-blocking)
+- `stream=False` 阻塞响应与相同结束判断：[`../local-llm-serving-demo-blocking/README.md`](../local-llm-serving-demo-blocking/README.md)
