@@ -78,6 +78,89 @@ Windows 上 `get_current_time` 依赖 IANA 时区库，请确保已安装 `tzdat
 - `convert_currency` — 货币换算
 - `code_interpreter` — Python 代码执行
 
+## 与 week1 web-search-demo：远程推理 vs 本地推理
+
+week1 与 week2 的 Agent **循环思路相同**（`messages` → `tool_calls` → 执行工具 → 再问模型 → 最终答案），但 **推理服务部署位置** 和 **工具执行位置** 不同。
+
+### 架构对比
+
+```text
+week1  web-search-demo
+─────────────────────────────────────────
+你的 Python (agent.py / main.py)
+        │  HTTPS
+        ▼
+远程 Moonshot / Kimi API  (api.moonshot.cn)
+        │  模型推理 + $web_search 搜网（均在云端）
+        ▼
+返回 tool_calls / 最终答案
+
+
+week2  local-llm-serving-demo（本项目）
+─────────────────────────────────────────
+你的 Python (main.py / ollama_native.py)
+        │  HTTP  127.0.0.1:11434
+        ▼
+本地 Ollama 推理服务  (ollama serve)
+        │  只负责模型推理（如 qwen3:0.6b）
+        ▼
+返回 tool_calls / content
+
+        │  中间无 HTTP
+        ▼
+本地 tools.py  (时间、天气等)  ← 在你自己电脑上执行
+```
+
+**不是**「本地再搭一层去给远程发请求」——week2 的**模型推理整条链路在本机**；只有 `tools.py` 查天气等场景会访问 Open-Meteo 等公网 API。
+
+### week1：远程 Kimi
+
+- 使用 **OpenAI SDK** 连接 `https://api.moonshot.cn/v1`
+- 需要配置 **`MOONSHOT_API_KEY`**
+- **推理在 Moonshot 云端**完成
+- 工具 `$web_search` 是 **Kimi 服务端内置能力**；本地只把模型返回的 `arguments` 原样塞回 `role: tool`，真正搜网在远端
+- 典型调用：`chat.completions.create(...)` **无** `stream=True`（阻塞，一次拿完整响应）
+
+### week2：本地 Ollama
+
+- 需先在本机运行 **`ollama serve`**（本地推理服务）
+- Python 通过 **`ollama.Client()`** 访问 `http://127.0.0.1:11434`
+- **模型在本地 GPU/CPU 上推理**
+- 工具在 **`tools.py`** 中实现，由你的 Python 进程调用，**不在 Ollama 进程内**
+- 可选 `stream=True`（本项目模式 A）或 `stream=False`（兄弟项目模式 C）
+
+### 对照表
+
+| | week1 `web-search-demo` | week2 本项目 |
+|--|-------------------------|--------------|
+| 推理在哪 | **远程** Moonshot 云端 | **本地** Ollama |
+| HTTP 发往 | `api.moonshot.cn` | `127.0.0.1:11434` |
+| 需要 API Key | 是（`MOONSHOT_API_KEY`） | 否 |
+| 需要本地推理服务 | 否 | **是**（`ollama serve`） |
+| 工具谁执行 | Kimi 服务端（`$web_search`） | **本地** `tools.py` |
+| 工具类型 | `builtin_function`（平台内置） | 普通 `function`（自己实现） |
+| API 流式 | 否（阻塞） | 默认是（`stream=True`） |
+| 展示层 | 日志 + 最终 `print(answer)` | `yield` chunk + 流式打印 |
+
+### 相同点与不同点
+
+**相同**：都是「你的 Agent 程序 ↔ 推理 API」；多轮对话中模型通过 `tool_calls` 决定是否调工具，Agent 循环结构一致。详见 [`week1/web-search-demo`](../../week1/web-search-demo)。
+
+**不同**：
+
+- week1：**推理 + 联网搜索**都在云端，本地几乎不写搜索逻辑
+- week2：**推理在本地 Ollama**，**工具在本地 Python**；你要自己实现 `get_current_time` 等并回传真实结果
+
+### `stream=True` / `stream=False` 如何选（week2）
+
+| 场景 | 建议 |
+|------|------|
+| 聊天 UI、打字机、尽早看到首字 | `stream=True`（模式 A 或 B） |
+| Agent 多轮 tool、脚本/批处理、逻辑要简单 | `stream=False`（模式 C，近 week1） |
+| API 走流式但 UI 一次输出 | 模式 B [`buffer`](../local-llm-serving-demo-buffer) |
+
+week1 因无流式展示需求，天然接近模式 C；week2 用模式 C 可专门对照学习阻塞响应，用模式 A/B 学习流式 chunk。详见兄弟项目 README。
+
 ## Agent 执行流程与调试要点
 
 与 [`week1/web-search-demo`](../../week1/web-search-demo) 相同：任务入口在 `execute_task()` 里**一次性**初始化 `messages`（`system` + `user`），循环内只追加 `assistant` / `tool`。
@@ -331,14 +414,15 @@ print(content, end="", flush=True)
 
 若只有 **1 次** POST、没有 `🔧 Tool Calls`，说明 `qwen3:0.6b` 本轮未走工具分支，直接编造了答案（小模型偶发）。日志里出现 `Executing tool:` 且 `✓` 中含 `Open-Meteo` / `America/Vancouver` 等字段，可确认工具已真实执行。
 
-### 与 week1 demo 的差异
+### 与 week1 demo 的差异（摘要）
+
+完整架构说明见上文 [远程推理 vs 本地推理](#与-week1-web-search-demo远程推理-vs-本地推理)。此处仅列与本项目展示层相关的差异：
 
 | | `web-search-demo` | 本项目 |
 |--|-------------------|--------|
-| 工具执行方 | Kimi 服务端（`$web_search`） | 本地 `tools.py` |
 | 模型发起工具 | `finish_reason: tool_calls` | `message.tool_calls` |
-| API 流式 | 否（一次拿完整响应） | 是（`stream=True`，见上一节） |
-| 展示层 | 日志 + 最终 `print(answer)` | `yield` chunk + `main.py` 流式打印 |
+| API 流式 | 否 | 是（`stream=True`） |
+| 展示层 | 日志 + 最终 `print(answer)` | `yield` chunk + 流式打印 |
 
 ## 与 `local_llm_serving` 的关系
 
